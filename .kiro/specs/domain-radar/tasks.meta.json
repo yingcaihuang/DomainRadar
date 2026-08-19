@@ -1,0 +1,1087 @@
+{
+  "pbtResults": {
+    "4.4 Write property test for Audit Logger": {
+      "status": "passed",
+      "lastRunTimestamp": 1787120461250
+    },
+    "4.6 Write property test for circuit breaker": {
+      "status": "passed",
+      "lastRunTimestamp": 1787120465935
+    },
+    "4.2 Write property tests for Crypto Service": {
+      "status": "passed",
+      "lastRunTimestamp": 1787120483268
+    },
+    "5.3 Write property test for RBAC enforcement": {
+      "status": "passed",
+      "lastRunTimestamp": 1787120915989
+    },
+    "7.8 Write property tests for registrar configuration": {
+      "status": "passed",
+      "lastRunTimestamp": 1787121721151
+    },
+    "9.4 Write property tests for WHOIS Worker": {
+      "status": "passed",
+      "lastRunTimestamp": 1787122894040
+    },
+    "8.3 Write property tests for Sync Scheduler": {
+      "status": "passed",
+      "lastRunTimestamp": 1787122977954
+    },
+    "11.3 Write property tests for Alert Engine": {
+      "status": "passed",
+      "lastRunTimestamp": 1787123914310
+    },
+    "12.4 Write property tests for Notification Dispatcher": {
+      "status": "passed",
+      "lastRunTimestamp": 1787123974444
+    }
+  },
+  "executionHistory": {
+    "1.1 Initialize Go backend project structure": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768565
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118781701
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119300877
+      }
+    ],
+    "1.2 Initialize React frontend project structure": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768673
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118782423
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119301599
+      }
+    ],
+    "1.3 Create Docker configuration files": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768700
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119311957
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119726906
+      }
+    ],
+    "1.4 Create backend Dockerfile (multi-stage)": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768748
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119312701
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119727673
+      }
+    ],
+    "1.5 Create frontend Dockerfile (multi-stage)": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768783
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119313442
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119728414
+      }
+    ],
+    "1.6 Configure Redis container with persistence": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768816
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119314190
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119729436
+      }
+    ],
+    "2.1 Create PostgreSQL migration framework": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768856
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119735188
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120038395
+      }
+    ],
+    "2.2 Implement GORM models and database connection": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768880
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119735830
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120039513
+      }
+    ],
+    "3. Checkpoint - Verify project builds and Docker starts": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768905
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120052206
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120283120
+      }
+    ],
+    "4.1 Implement Crypto Service (AES-256-GCM)": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768932
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120053044
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120284032
+      }
+    ],
+    "4.3 Implement Audit Logger service": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768957
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120053726
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120284745
+      }
+    ],
+    "4.5 Implement structured error handling": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118768982
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120054546
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120285462
+      }
+    ],
+    "4.7 Implement Cache Service": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769007
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120055176
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120286087
+      }
+    ],
+    "5.1 Implement OIDC authentication with Authentik": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769031
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120515715
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120800181
+      }
+    ],
+    "5.2 Implement RBAC middleware": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769065
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120516535
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120800822
+      }
+    ],
+    "5.4 Implement user management endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769090
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120813114
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121112047
+      }
+    ],
+    "6. Checkpoint - Verify auth and core infrastructure": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769115
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121119079
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121255681
+      }
+    ],
+    "7.1 Define RegistrarAdapter interface and registry": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769141
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121119807
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121256441
+      }
+    ],
+    "7.2 Implement GoDaddy adapter": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769174
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121262214
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121519372
+      }
+    ],
+    "7.3 Implement Cloudflare adapter": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769198
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121262913
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121520084
+      }
+    ],
+    "7.4 Implement Alibaba Cloud adapter": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769222
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121263746
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121520788
+      }
+    ],
+    "7.5 Implement Tencent Cloud adapter": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769246
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121264495
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121521575
+      }
+    ],
+    "7.6 Implement Namecheap adapter": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769271
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121265188
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121522324
+      }
+    ],
+    "7.7 Implement registrar configuration management endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769298
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121540387
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121889021
+      }
+    ],
+    "8.1 Implement Sync Scheduler core": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769325
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121902391
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122128443
+      }
+    ],
+    "8.2 Implement domain data merge logic": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769358
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122134550
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122749028
+      }
+    ],
+    "8.4 Implement manual sync trigger endpoint": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769391
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122135348
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122749886
+      }
+    ],
+    "9.1 Implement WHOIS Worker core": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769424
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121903268
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122127716
+      }
+    ],
+    "9.2 Implement WHOIS retry and circuit breaker logic": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769466
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122136115
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122750717
+      }
+    ],
+    "9.3 Implement WHOIS discrepancy detection": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769500
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122136941
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122751467
+      }
+    ],
+    "10. Checkpoint - Verify sync and WHOIS workers": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769532
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123013224
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123360912
+      }
+    ],
+    "11.1 Implement Alert Engine core": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769559
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123013963
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123360147
+      }
+    ],
+    "11.2 Implement alert delivery and retry logic": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769590
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123381306
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123806500
+      }
+    ],
+    "11.4 Implement alert API endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769616
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123382038
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123807310
+      }
+    ],
+    "12.1 Implement NotificationChannel interface and channel implementations": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769648
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123014708
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123359547
+      }
+    ],
+    "12.2 Implement notification routing and retry": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769674
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123382843
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123806394
+      }
+    ],
+    "12.3 Implement notification channel configuration endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769707
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123383505
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123804954
+      }
+    ],
+    "13.1 Implement website health checks": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769733
+      }
+    ],
+    "13.2 Implement uptime calculation and monitoring endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769767
+      }
+    ],
+    "14.1 Implement certificate monitoring": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769807
+      }
+    ],
+    "15.1 Implement email service monitoring": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769841
+      }
+    ],
+    "16.1 Implement domain health score": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769873
+      }
+    ],
+    "17. Checkpoint - Verify monitoring and alerting": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769899
+      }
+    ],
+    "18.1 Implement domain CRUD endpoints": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769926
+      }
+    ],
+    "18.2 Implement CSV/Excel import": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769957
+      }
+    ],
+    "18.3 Implement domain export": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118769998
+      }
+    ],
+    "18.4 Implement bulk operations": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770023
+      }
+    ],
+    "18.5 Implement tags and groups management": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770058
+      }
+    ],
+    "19.1 Implement dashboard endpoint": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770090
+      }
+    ],
+    "19.2 Implement expiration calendar endpoint": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770116
+      }
+    ],
+    "19.3 Implement cost statistics endpoint": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770156
+      }
+    ],
+    "19.4 Implement audit log endpoint": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770183
+      }
+    ],
+    "20. Checkpoint - Verify all backend APIs": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770215
+      }
+    ],
+    "21.1 Implement app shell and routing": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770241
+      }
+    ],
+    "21.2 Implement authentication flow": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770274
+      }
+    ],
+    "22.1 Implement domain list page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770307
+      }
+    ],
+    "22.2 Implement domain detail page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770332
+      }
+    ],
+    "22.3 Implement domain create/edit form": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770357
+      }
+    ],
+    "22.4 Implement CSV/Excel import modal": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770382
+      }
+    ],
+    "23.1 Implement dashboard page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770407
+      }
+    ],
+    "23.2 Implement expiration calendar page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770432
+      }
+    ],
+    "23.3 Implement alerts page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770462
+      }
+    ],
+    "23.4 Implement uptime and response time charts": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770488
+      }
+    ],
+    "24.1 Implement registrar configuration page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770513
+      }
+    ],
+    "24.2 Implement notification channel configuration page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770538
+      }
+    ],
+    "24.3 Implement user management page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770563
+      }
+    ],
+    "24.4 Implement audit log page": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770588
+      }
+    ],
+    "25. Checkpoint - Verify frontend application": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770613
+      }
+    ],
+    "26.1 Write backend integration tests": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770638
+      }
+    ],
+    "26.2 Write frontend tests": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770663
+      }
+    ],
+    "27.1 Optimize Docker builds for production": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770688
+      }
+    ],
+    "28. Final checkpoint - Full system verification": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787118770713
+      }
+    ],
+    "1. Project scaffolding and Docker infrastructure": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787119729470
+      }
+    ],
+    "2. Database schema and migrations": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120039551
+      }
+    ],
+    "4. Core infrastructure services": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120286118
+      }
+    ],
+    "4.2 Write property tests for Crypto Service": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120343473
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120508816
+      }
+    ],
+    "4.4 Write property test for Audit Logger": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120343904
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120509674
+      }
+    ],
+    "4.6 Write property test for circuit breaker": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120344251
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120510350
+      }
+    ],
+    "5.3 Write property test for RBAC enforcement": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787120812472
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121111275
+      }
+    ],
+    "5. Authentication and authorization": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121112089
+      }
+    ],
+    "7.8 Write property tests for registrar configuration": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121541374
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121889847
+      }
+    ],
+    "7. Registrar adapter framework": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787121889059
+      }
+    ],
+    "8. Sync Scheduler": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122749911
+      }
+    ],
+    "9. WHOIS Worker with who-dat integration": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122751500
+      }
+    ],
+    "8.3 Write property tests for Sync Scheduler": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122765013
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122998529
+      }
+    ],
+    "9.4 Write property tests for WHOIS Worker": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122765680
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787122997653
+      }
+    ],
+    "12. Notification Dispatcher": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123806424
+      }
+    ],
+    "11. Alert Engine": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123807342
+      }
+    ],
+    "12.4 Write property tests for Notification Dispatcher": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123822603
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123995517
+      }
+    ],
+    "11.3 Write property tests for Alert Engine": [
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123823377
+      },
+      {
+        "executionId": "540350e5-3b93-4228-bd48-26f57e82192e",
+        "chatSessionId": "sess_23d28e8a-9d14-423f-ac4d-05f7ef27afe3",
+        "timestamp": 1787123994743
+      }
+    ]
+  }
+}

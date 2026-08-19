@@ -1,0 +1,175 @@
+/* Global base font size increase */
+html {
+  font-size: 15px;
+}
+
+body {
+  font-size: 15px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+/* Sidebar menu - bigger text and taller items */
+.ant-menu-item {
+  font-size: 15px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  margin-block: 6px !important;
+  padding-inline: 20px !important;
+  border-radius: 10px !important;
+}
+
+.ant-menu-item .ant-menu-item-icon,
+.ant-menu-item .anticon {
+  font-size: 18px !important;
+}
+
+/* Table - more spacious */
+.ant-table-cell {
+  padding: 16px 20px !important;
+  font-size: 14px !important;
+}
+
+.ant-table-thead > tr > th {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  padding: 14px 20px !important;
+}
+
+/* Card - larger titles and more padding */
+.ant-card {
+  border-radius: 14px !important;
+}
+
+.ant-card-head {
+  padding: 16px 24px !important;
+  min-height: 56px !important;
+}
+
+.ant-card-head-title {
+  font-size: 17px !important;
+  font-weight: 600 !important;
+}
+
+.ant-card-body {
+  padding: 24px !important;
+}
+
+/* Descriptions - larger labels and content */
+.ant-descriptions-item-label {
+  font-size: 14px !important;
+  color: #6b7280 !important;
+  font-weight: 500 !important;
+}
+
+.ant-descriptions-item-content {
+  font-size: 15px !important;
+}
+
+/* Tabs - bigger and more padded */
+.ant-tabs-tab {
+  font-size: 15px !important;
+  padding: 14px 20px !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  font-weight: 600 !important;
+}
+
+/* Tags - slightly larger */
+.ant-tag {
+  font-size: 13px !important;
+  padding: 2px 10px !important;
+  line-height: 22px !important;
+}
+
+/* Modal */
+.ant-modal-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.ant-modal-body {
+  padding: 24px !important;
+}
+
+/* Form labels and inputs */
+.ant-form-item-label > label {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.ant-select-selector,
+.ant-input,
+.ant-input-password,
+.ant-picker {
+  font-size: 14px !important;
+  min-height: 38px !important;
+}
+
+.ant-select-selection-item {
+  font-size: 14px !important;
+}
+
+/* Buttons */
+.ant-btn {
+  font-size: 14px !important;
+  height: 36px !important;
+  padding: 4px 16px !important;
+  border-radius: 8px !important;
+}
+
+.ant-btn-sm {
+  height: 30px !important;
+  font-size: 13px !important;
+  padding: 2px 10px !important;
+}
+
+.ant-btn-primary {
+  font-weight: 500 !important;
+}
+
+/* Pagination */
+.ant-pagination {
+  font-size: 14px !important;
+  padding: 16px 20px !important;
+}
+
+/* Badge count */
+.ant-badge-count {
+  font-size: 11px !important;
+}
+
+/* Select dropdown */
+.ant-select-item {
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+}
+
+/* Tooltip */
+.ant-tooltip-inner {
+  font-size: 13px !important;
+}
+
+/* Progress circle */
+.ant-progress-text {
+  font-size: 13px !important;
+}
+
+/* Divider section labels */
+.ant-divider {
+  margin: 16px 0 !important;
+}
+
+/* Alert */
+.ant-alert-message {
+  font-size: 14px !important;
+}
+
+/* Empty state */
+.ant-empty-description {
+  font-size: 14px !important;
+}

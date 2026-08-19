@@ -1,0 +1,55 @@
+# Development overrides
+# This file is automatically loaded by docker-compose alongside docker-compose.yml.
+# It enables hot-reload, debug ports, and volume-mounted source for local development.
+
+services:
+  postgresql:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: "no"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    restart: "no"
+
+  who-dat:
+    ports:
+      - "${WHO_DAT_PORT:-8085}:8080"
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      target: development
+    environment:
+      GIN_MODE: debug
+      PORT: "8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-domainradar}:${POSTGRES_PASSWORD:-domainradar_secret}@postgresql:5432/${POSTGRES_DB:-domainradar}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      WHO_DAT_URL: http://who-dat:8080
+      DOMAINRADAR_MASTER_KEY: ${DOMAINRADAR_MASTER_KEY:-changeme_generate_a_32byte_key!!}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:9000/application/o/domainradar/}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-domainradar}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-http://localhost:8080/api/v1/auth/callback}
+    volumes:
+      - ./backend:/app
+      - /app/vendor
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_DEBUG_PORT:-2345}:2345"
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    restart: "no"

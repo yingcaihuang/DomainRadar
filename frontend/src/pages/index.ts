@@ -1,0 +1,10 @@
+export { DashboardPage } from './DashboardPage';
+export { DomainListPage } from './DomainListPage';
+export { DomainDetailPage } from './DomainDetailPage';
+export { DomainFormPage } from './DomainFormPage';
+export { CalendarPage } from './CalendarPage';
+export { AlertsPage } from './AlertsPage';
+export { RegistrarSettingsPage } from './RegistrarSettingsPage';
+export { NotificationSettingsPage } from './NotificationSettingsPage';
+export { UserManagementPage } from './UserManagementPage';
+export { AuditLogPage } from './AuditLogPage';
