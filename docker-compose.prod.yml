@@ -1,0 +1,130 @@
+# Production / Local unified docker-compose
+# Local:  SITE_DOMAIN=:80 (default, no SSL)
+# Prod:   SITE_DOMAIN=domainradar.verycloud.cn (auto SSL)
+
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: domainradar-postgresql
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-domainradar}
+      POSTGRES_USER: ${POSTGRES_USER:-domainradar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-domainradar_secret}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-domainradar} -d ${POSTGRES_DB:-domainradar}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - domainradar-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: domainradar-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - domainradar-net
+
+  who-dat:
+    image: lissy93/who-dat
+    container_name: domainradar-who-dat
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - domainradar-net
+
+  backend:
+    build:
+      context: ./backend
+      target: production
+    container_name: domainradar-backend
+    environment:
+      GIN_MODE: release
+      PORT: "8080"
+      AUTO_MIGRATE: "true"
+      DATABASE_URL: postgres://${POSTGRES_USER:-domainradar}:${POSTGRES_PASSWORD:-domainradar_secret}@postgresql:5432/${POSTGRES_DB:-domainradar}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      WHO_DAT_URL: http://who-dat:8080
+      DOMAINRADAR_MASTER_KEY: ${DOMAINRADAR_MASTER_KEY:-changeme_generate_a_32byte_key!!}
+    expose:
+      - "8080"
+    volumes:
+      - app-logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/v1/system/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      who-dat:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - domainradar-net
+
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    container_name: domainradar-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-:80}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - domainradar-net
+
+networks:
+  domainradar-net:
+    driver: bridge
+
+volumes:
+  pg-data:
+  redis-data:
+  app-logs:
+  caddy_data:
+  caddy_config:

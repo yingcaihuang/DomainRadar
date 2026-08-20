@@ -142,19 +142,10 @@ func (h *AuthHandler) HandleCallback(c *gin.Context) {
 
 	// Set session token as a cookie
 	c.SetCookie("session_token", session.Token, int(h.SessionManager.ttl.Seconds()), "/", "", false, true)
+	h.Logger.Info("User logged in via SSO", zap.String("email", user.Email), zap.Strings("roles", roles))
 
-	h.Logger.Info("User logged in", zap.String("email", user.Email), zap.Strings("roles", roles))
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "login successful",
-		"user": gin.H{
-			"id":           user.ID,
-			"email":        user.Email,
-			"display_name": user.DisplayName,
-			"roles":        roles,
-		},
-		"token": session.Token,
-	})
+	// Redirect to frontend after successful SSO login
+	c.Redirect(http.StatusTemporaryRedirect, "/dashboard")
 }
 
 // HandleLogout destroys the current session.
@@ -341,15 +332,24 @@ func MapGroupsToRoles(groups []string) []string {
 func (h *AuthHandler) upsertUser(claims Claims, roles []string) (*domain.User, error) {
 	var user domain.User
 
-	result := h.DB.Where("external_id = ?", claims.Sub).First(&user)
+	// Try to find by Sub first, then by email (for SSO users created with UUID as external_id)
+	result := h.DB.Where("external_id = ? OR (email = ? AND auth_source = 'oidc')", claims.Sub, claims.Email).First(&user)
 	now := time.Now()
 
 	if result.Error == gorm.ErrRecordNotFound {
-		// Create new user
+		// Create new user - use preferred_username or email as readable external_id
+		externalID := claims.PreferredUser
+		if externalID == "" {
+			externalID = claims.Email
+		}
+		if externalID == "" {
+			externalID = claims.Sub
+		}
 		user = domain.User{
-			ExternalID:  claims.Sub,
+			ExternalID:  externalID,
 			Email:       claims.Email,
 			DisplayName: claims.Name,
+			AuthSource:  "oidc",
 			LastLoginAt: &now,
 		}
 		if err := h.DB.Create(&user).Error; err != nil {
@@ -361,6 +361,7 @@ func (h *AuthHandler) upsertUser(claims Claims, roles []string) (*domain.User, e
 		// Update existing user
 		user.Email = claims.Email
 		user.DisplayName = claims.Name
+		user.AuthSource = "oidc"
 		user.LastLoginAt = &now
 		if err := h.DB.Save(&user).Error; err != nil {
 			return nil, err
