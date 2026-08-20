@@ -2,6 +2,20 @@
 
 域名资产监控与到期管理平台
 
+## 平台截图
+
+| 仪表盘 | 域名管理 |
+|:---:|:---:|
+| ![仪表盘](docs/screenshots/image_dashboard.png) | ![域名管理](docs/screenshots/image_domain.png) |
+
+| 到期规则 | 注册商配置 |
+|:---:|:---:|
+| ![到期规则](docs/screenshots/image_rules.png) | ![注册商配置](docs/screenshots/image_register.png) |
+
+| 通知渠道 |
+|:---:|
+| ![通知渠道](docs/screenshots/image_notify.png) |
+
 ## 功能概览
 
 - 域名管理 — 多注册商（GoDaddy、阿里云、腾讯云、Cloudflare、Namecheap）API 同步
