@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"domainradar/internal/adapter"
 	adapterAlibaba "domainradar/internal/adapter/alibaba"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -79,9 +81,18 @@ func main() {
 	sm := auth.NewSessionManager(0) // 0 = default 24h TTL
 	auditService := audit.NewService(db, logger)
 
+	// Seed default admin user if no users exist
+	seedDefaultAdmin(db, logger)
+
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(oidcProvider, sm, db, logger)
+
+	// Try to initialize OIDC from database config (overrides env-based provider)
+	auth.InitializeOIDCFromDB(db, authHandler, logger)
+
 	userHandler := auth.NewUserHandler(db, logger)
+	ssoConfigHandler := auth.NewSSOConfigHandler(db, logger, authHandler)
+	groupMappingHandler := auth.NewGroupMappingHandler(db, logger)
 	dashboardHandler := dashboard.NewDashboardHandler(db, logger)
 	domainHandler := domainmgmt.NewDomainHandler(db, auditService, logger)
 	alertHandler := alert.NewAlertHandler(db, logger)
@@ -129,6 +140,8 @@ func main() {
 		sm,
 		authHandler,
 		userHandler,
+		ssoConfigHandler,
+		groupMappingHandler,
 		dashboardHandler,
 		domainHandler,
 		alertHandler,
@@ -157,6 +170,8 @@ func setupRouter(
 	sm *auth.SessionManager,
 	authHandler *auth.AuthHandler,
 	userHandler *auth.UserHandler,
+	ssoConfigHandler *auth.SSOConfigHandler,
+	groupMappingHandler *auth.GroupMappingHandler,
 	dashboardHandler *dashboard.DashboardHandler,
 	domainHandler *domainmgmt.DomainHandler,
 	alertHandler *alert.AlertHandler,
@@ -233,6 +248,16 @@ func setupRouter(
 			emailRulesHandler.RegisterRoutes(protected)
 			}
 
+			// SSO Configuration (admin only)
+			if ssoConfigHandler != nil {
+				ssoConfigHandler.RegisterRoutes(protected)
+			}
+
+			// Group Mappings (admin only)
+			if groupMappingHandler != nil {
+				groupMappingHandler.RegisterRoutes(protected)
+			}
+
 			// Certificate monitoring
 			if certHandler != nil {
 				certHandler.RegisterRoutes(protected)
@@ -246,4 +271,57 @@ func setupRouter(
 	}
 
 	return router
+}
+
+// seedDefaultAdmin creates a default admin user if no users exist in the database.
+// This enables first-deploy login with admin/admin123.
+func seedDefaultAdmin(db *gorm.DB, logger *zap.Logger) {
+	var count int64
+	if err := db.Model(&domain.User{}).Count(&count).Error; err != nil {
+		logger.Warn("Failed to check user count for seeding", zap.Error(err))
+		return
+	}
+
+	if count > 0 {
+		return // Users already exist, skip seeding
+	}
+
+	// Hash the default password
+	hash, err := auth.HashPassword("admin123")
+	if err != nil {
+		logger.Error("Failed to hash default admin password", zap.Error(err))
+		return
+	}
+
+	now := time.Now()
+	user := domain.User{
+		ExternalID:         "admin",
+		Email:              "admin@localhost",
+		DisplayName:        "Administrator",
+		PasswordHash:       hash,
+		AuthSource:         "local",
+		MustChangePassword: true,
+		LastLoginAt:        &now,
+	}
+
+	if err := db.Create(&user).Error; err != nil {
+		logger.Error("Failed to create default admin user", zap.Error(err))
+		return
+	}
+
+	// Assign admin role
+	role := domain.UserRole{
+		UserID: user.ID,
+		Role:   auth.RoleAdmin,
+	}
+	if err := db.Create(&role).Error; err != nil {
+		logger.Error("Failed to assign admin role to default user", zap.Error(err))
+		return
+	}
+
+	logger.Info("Default admin user created",
+		zap.String("username", "admin"),
+		zap.String("password", "admin123"),
+		zap.String("note", "Change this password on first login!"),
+	)
 }

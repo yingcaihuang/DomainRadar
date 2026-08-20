@@ -26,9 +26,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 // Auth
 export const authApi = {
-  login: () => { window.location.href = `${API_BASE}/auth/login`; },
+  loginSSO: () => { window.location.href = `${API_BASE}/auth/login-sso`; },
+  login: (data: { username: string; password: string }) =>
+    request<{ message: string; user: any; token: string }>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request<{ data: User }>('/auth/me'),
+  changePassword: (data: { old_password: string; new_password: string }) =>
+    request<{ message: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
+  mode: () => request<{ sso_enabled: boolean; local_enabled: boolean }>('/auth/mode'),
 };
 
 // Domains
@@ -142,10 +147,44 @@ export const notificationApi = {
 
 // Users
 export const userApi = {
-  list: () => request<{ data: User[] }>('/users'),
+  list: () => request<{ users: userResponse[]; total: number; page: number; page_size: number; total_pages: number }>('/users'),
+  create: (data: { username: string; email: string; display_name: string; password: string; roles: string[] }) =>
+    request('/users', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: { email?: string; display_name?: string; roles?: string[] }) =>
+    request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: number) => request(`/users/${id}`, { method: 'DELETE' }),
+  resetPassword: (id: number, newPassword: string) =>
+    request(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ new_password: newPassword }) }),
   updateRoles: (id: number, roles: string[]) =>
     request(`/users/${id}/roles`, { method: 'PUT', body: JSON.stringify({ roles }) }),
 };
+
+// Internal type for user list response
+interface userResponse {
+  id: number;
+  external_id: string;
+  email: string;
+  display_name: string;
+  auth_source: string;
+  roles: string[];
+  last_login_at: string | null;
+  created_at: string;
+}
+
+// Group Mappings
+export const groupMappingApi = {
+  list: () => request<{ data: GroupMappingItem[] }>('/config/group-mappings'),
+  create: (data: { group_name: string; role: string }) =>
+    request('/config/group-mappings', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id: number) => request(`/config/group-mappings/${id}`, { method: 'DELETE' }),
+};
+
+export interface GroupMappingItem {
+  id: number;
+  group_name: string;
+  role: string;
+  created_at: string;
+}
 
 // Audit logs
 export const auditApi = {
@@ -277,4 +316,15 @@ export const emailRulesApi = {
   update: (id: number, data: any) => request(`/config/email-alert-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: number) => request(`/config/email-alert-rules/${id}`, { method: 'DELETE' }),
   resetDefaults: () => request('/config/email-alert-rules/reset-defaults', { method: 'POST' }),
+};
+
+// SSO Configuration
+export const ssoConfigApi = {
+  get: () => request<{ data: any }>('/config/sso'),
+  update: (data: any) =>
+    request<{ message: string; data: any }>('/config/sso', { method: 'PUT', body: JSON.stringify(data) }),
+  test: (data: { issuer_url: string; client_id?: string; redirect_url?: string }) =>
+    request<{ success: boolean; message: string }>('/config/sso/test', { method: 'POST', body: JSON.stringify(data) }),
+  discover: (data: { issuer_url: string }) =>
+    request<{ success: boolean; message?: string; data?: any }>('/config/sso/discover', { method: 'POST', body: JSON.stringify(data) }),
 };

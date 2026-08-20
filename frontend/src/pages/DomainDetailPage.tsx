@@ -157,10 +157,21 @@ function EmailSecurityTab({ emailMonitorData, emailMonitorLoading, emailHistoryD
                     </Space>
                   ),
                   children: (
-                    <ul style={{ margin: 0, paddingLeft: 20 }}>
-                      {findings.length > 0 ? findings.map((f: string, i: number) => (
-                        <li key={i} style={{ marginBottom: 4, color: '#4b5563' }}>{f}</li>
-                      )) : <li style={{ color: '#9ca3af' }}>无详细信息</li>}
+                    <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'none' }}>
+                      {findings.length > 0 ? findings.map((f: string, i: number) => {
+                        const isRecord = f.startsWith('  →');
+                        return (
+                          <li key={i} style={{ marginBottom: isRecord ? 2 : 6, color: isRecord ? '#6366f1' : '#4b5563' }}>
+                            {isRecord ? (
+                              <code style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontFamily: 'monospace' }}>
+                                {f.replace('  → ', '')}
+                              </code>
+                            ) : (
+                              <span>• {f}</span>
+                            )}
+                          </li>
+                        );
+                      }) : <li style={{ color: '#9ca3af' }}>无详细信息</li>}
                     </ul>
                   ),
                 };

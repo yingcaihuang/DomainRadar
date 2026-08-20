@@ -132,7 +132,9 @@ type DomainResponse struct {
 	Tags                    []TagResponse   `json:"tags"`
 	Group                   *GroupResponse  `json:"group,omitempty"`
 	CertMonitorEnabled      bool            `json:"cert_monitor_enabled"`
+	CertDaysRemaining       *int            `json:"cert_days_remaining,omitempty"`
 	EmailMonitorEnabled     bool            `json:"email_monitor_enabled"`
+	EmailScore              *int            `json:"email_score,omitempty"`
 	CreatedAt               time.Time       `json:"created_at"`
 	UpdatedAt               time.Time       `json:"updated_at"`
 }
@@ -230,7 +232,7 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 	if tagIDs := c.Query("tag_ids"); tagIDs != "" {
 		ids := parseUintSlice(tagIDs)
 		if len(ids) > 0 {
-			query = query.Where("id IN (SELECT domain_id FROM domain_tags WHERE tag_id IN ?)", ids)
+			query = query.Where("id IN (SELECT normalized_domain_id FROM domain_tags WHERE tag_id IN ?)", ids)
 		}
 	}
 
@@ -328,17 +330,38 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		domainIDs = append(domainIDs, d.ID)
 	}
 	certMonitorMap := make(map[uint]bool)
+	certDaysMap := make(map[uint]int)
 	emailMonitorMap := make(map[uint]bool)
+	emailScoreMap := make(map[uint]int)
 	if len(domainIDs) > 0 {
-		var certMonitorIDs []uint
-		h.db.Model(&domain.CertificateMonitor{}).Where("domain_id IN ? AND enabled = ?", domainIDs, true).Pluck("domain_id", &certMonitorIDs)
-		for _, id := range certMonitorIDs {
-			certMonitorMap[id] = true
+		var certMonitors []domain.CertificateMonitor
+		h.db.Where("domain_id IN ? AND enabled = ?", domainIDs, true).Find(&certMonitors)
+		for _, m := range certMonitors {
+			certMonitorMap[m.DomainID] = true
 		}
-		var emailMonitorIDs []uint
-		h.db.Model(&domain.EmailMonitor{}).Where("domain_id IN ? AND enabled = ?", domainIDs, true).Pluck("domain_id", &emailMonitorIDs)
-		for _, id := range emailMonitorIDs {
-			emailMonitorMap[id] = true
+		// Get latest cert days_remaining per domain
+		var certChecks []struct {
+			DomainID      uint
+			DaysRemaining int
+		}
+		h.db.Raw(`SELECT DISTINCT ON (domain_id) domain_id, days_remaining FROM certificate_checks WHERE domain_id IN ? AND error = '' ORDER BY domain_id, checked_at DESC`, domainIDs).Scan(&certChecks)
+		for _, c := range certChecks {
+			certDaysMap[c.DomainID] = c.DaysRemaining
+		}
+
+		var emailMonitors []domain.EmailMonitor
+		h.db.Where("domain_id IN ? AND enabled = ?", domainIDs, true).Find(&emailMonitors)
+		for _, m := range emailMonitors {
+			emailMonitorMap[m.DomainID] = true
+		}
+		// Get latest email score per domain
+		var emailResults []struct {
+			DomainID   uint
+			TotalScore int
+		}
+		h.db.Raw(`SELECT DISTINCT ON (domain_id) domain_id, total_score FROM email_check_results WHERE domain_id IN ? ORDER BY domain_id, checked_at DESC`, domainIDs).Scan(&emailResults)
+		for _, r := range emailResults {
+			emailScoreMap[r.DomainID] = r.TotalScore
 		}
 	}
 
@@ -347,6 +370,12 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		resp := toDomainResponse(d)
 		resp.CertMonitorEnabled = certMonitorMap[d.ID]
 		resp.EmailMonitorEnabled = emailMonitorMap[d.ID]
+		if days, ok := certDaysMap[d.ID]; ok {
+			resp.CertDaysRemaining = &days
+		}
+		if score, ok := emailScoreMap[d.ID]; ok {
+			resp.EmailScore = &score
+		}
 		responses = append(responses, resp)
 	}
 
@@ -750,7 +779,7 @@ func (h *DomainHandler) ExportDomains(c *gin.Context) {
 	if tagIDs := c.Query("tag_ids"); tagIDs != "" {
 		ids := parseUintSlice(tagIDs)
 		if len(ids) > 0 {
-			query = query.Where("id IN (SELECT domain_id FROM domain_tags WHERE tag_id IN ?)", ids)
+			query = query.Where("id IN (SELECT normalized_domain_id FROM domain_tags WHERE tag_id IN ?)", ids)
 		}
 	}
 	if groupID := c.Query("group_id"); groupID != "" {

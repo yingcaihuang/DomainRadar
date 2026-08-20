@@ -183,6 +183,8 @@ export interface User {
   display_name: string;
   roles: string[];
   last_login_at: string | null;
+  auth_source?: string;
+  must_change_password?: boolean;
 }
 
 export interface AuditLog {

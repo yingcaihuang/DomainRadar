@@ -230,18 +230,44 @@ type NotificationLog struct {
 	Channel NotificationChannel `gorm:"foreignKey:ChannelID" json:"channel,omitempty"`
 }
 
-// User represents an authenticated user from Authentik SSO.
+// User represents an authenticated user (local or SSO).
 type User struct {
-	ID          uint       `gorm:"primaryKey" json:"id"`
-	ExternalID  string     `gorm:"uniqueIndex;size:255;not null" json:"external_id"`
-	Email       string     `gorm:"size:255" json:"email"`
-	DisplayName string     `gorm:"size:255" json:"display_name"`
-	LastLoginAt *time.Time `json:"last_login_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID                 uint       `gorm:"primaryKey" json:"id"`
+	ExternalID         string     `gorm:"uniqueIndex;size:255;not null" json:"external_id"`
+	Email              string     `gorm:"size:255" json:"email"`
+	DisplayName        string     `gorm:"size:255" json:"display_name"`
+	PasswordHash       string     `gorm:"size:255" json:"-"`
+	AuthSource         string     `gorm:"size:20;default:'local'" json:"auth_source"` // "local" or "oidc"
+	MustChangePassword bool       `gorm:"default:false" json:"must_change_password"`
+	LastLoginAt        *time.Time `json:"last_login_at"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 
 	// Relations
 	Roles []UserRole `gorm:"foreignKey:UserID" json:"roles,omitempty"`
+}
+
+// SSOConfig stores OIDC configuration in the database (singleton row).
+type SSOConfig struct {
+	ID                    uint      `gorm:"primaryKey" json:"id"`
+	Enabled               bool      `gorm:"default:false" json:"enabled"`
+	IssuerURL             string    `gorm:"size:500" json:"issuer_url"`
+	DiscoveryURL          string    `gorm:"size:500" json:"discovery_url"`
+	ClientID              string    `gorm:"size:255" json:"client_id"`
+	ClientSecret          string    `gorm:"size:500" json:"-"`
+	AuthorizationEndpoint string    `gorm:"size:500" json:"authorization_endpoint"`
+	TokenEndpoint         string    `gorm:"size:500" json:"token_endpoint"`
+	UserinfoEndpoint      string    `gorm:"size:500" json:"userinfo_endpoint"`
+	JWKSURI               string    `gorm:"size:500" json:"jwks_uri"`
+	EndSessionEndpoint    string    `gorm:"size:500" json:"end_session_endpoint"`
+	RedirectURL           string    `gorm:"size:500" json:"redirect_url"`
+	Scopes                string    `gorm:"size:255;default:openid profile email groups" json:"scopes"`
+	GroupsClaim           string    `gorm:"size:100;default:groups" json:"groups_claim"`
+	GroupsSource          string    `gorm:"size:30;default:userinfo" json:"groups_source"` // "id_token" or "userinfo"
+	ShowOnLoginPage       bool      `gorm:"default:true" json:"show_on_login_page"`
+	CookieSecure          bool      `gorm:"default:false" json:"cookie_secure"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 // UserRole defines an assigned role for a user.
@@ -389,6 +415,14 @@ type EmailAlertRule struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// GroupMapping maps an SSO group name to a platform role.
+type GroupMapping struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	GroupName string    `gorm:"size:255;uniqueIndex;not null" json:"group_name"`
+	Role      string    `gorm:"size:30;not null" json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // AllModels returns all GORM model types for use in auto-migration.
 func AllModels() []interface{} {
 	return []interface{}{
@@ -409,10 +443,12 @@ func AllModels() []interface{} {
 		&NotificationLog{},
 		&User{},
 		&UserRole{},
+		&SSOConfig{},
 		&AuditLog{},
 		&SyncLog{},
 		&ExpirationRule{},
 		&EmailAlertRule{},
+		&GroupMapping{},
 	}
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App } from 'antd';
+import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App, Tooltip } from 'antd';
 import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, SafetyCertificateOutlined, MailOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
@@ -138,25 +138,42 @@ export function DomainListPage() {
       key: 'tags',
       render: (tags: { id: number; name: string }[]) => (
         <Space size={2} wrap>
-          {tags?.slice(0, 3).map(t => <Tag key={t.id} style={{ borderRadius: 6 }}>{t.name}</Tag>)}
+          {tags?.slice(0, 3).map(t => <Tag key={t.id} color="purple" style={{ borderRadius: 6 }}>{t.name}</Tag>)}
           {tags?.length > 3 && <Tag style={{ borderRadius: 6 }}>+{tags.length - 3}</Tag>}
         </Space>
       ),
     },
     {
+      title: '分组',
+      dataIndex: 'group',
+      key: 'group',
+      render: (group: { id: number; name: string } | null) => group ? <Tag color="blue" style={{ borderRadius: 6 }}>{group.name}</Tag> : '-',
+    },
+    {
       title: '监控',
       key: 'monitors',
       width: 100,
-      render: (_: any, record: Domain) => (
-        <Space size={4}>
-          <span title="证书监控" style={{ color: (record as any).cert_monitor_enabled ? '#10b981' : '#d1d5db', fontSize: 16 }}>
-            <SafetyCertificateOutlined />
-          </span>
-          <span title="邮件监控" style={{ color: (record as any).email_monitor_enabled ? '#10b981' : '#d1d5db', fontSize: 16 }}>
-            <MailOutlined />
-          </span>
-        </Space>
-      ),
+      render: (_: any, record: Domain) => {
+        const r = record as any;
+        const certTip = r.cert_monitor_enabled
+          ? `证书监控: 已启用${r.cert_days_remaining != null ? ' | 剩余' + r.cert_days_remaining + '天' : ''}`
+          : '证书监控: 未启用';
+        const emailTip = r.email_monitor_enabled
+          ? `邮件监控: 已启用${r.email_score != null ? ' | 评分' + r.email_score + '/100' : ''}`
+          : '邮件监控: 未启用';
+        const certColor = !r.cert_monitor_enabled ? '#d1d5db' : r.cert_days_remaining != null && r.cert_days_remaining <= 30 ? '#f59e0b' : '#10b981';
+        const emailColor = !r.email_monitor_enabled ? '#d1d5db' : r.email_score != null && r.email_score < 70 ? '#f59e0b' : '#10b981';
+        return (
+          <Space size={4}>
+            <Tooltip title={certTip}>
+              <span style={{ color: certColor, fontSize: 16, cursor: 'pointer' }}><SafetyCertificateOutlined /></span>
+            </Tooltip>
+            <Tooltip title={emailTip}>
+              <span style={{ color: emailColor, fontSize: 16, cursor: 'pointer' }}><MailOutlined /></span>
+            </Tooltip>
+          </Space>
+        );
+      },
     },
     {
       title: '操作',

@@ -35,9 +35,8 @@ func NewAuthHandler(provider *OIDCProvider, sm *SessionManager, db *gorm.DB, log
 	}
 }
 
-// HandleLogin initiates the OIDC authentication flow by redirecting to Authentik.
-// In dev mode, it returns a message indicating dev login should be used instead.
-// GET /api/v1/auth/login
+// HandleLogin initiates the OIDC authentication flow by redirecting to the SSO provider.
+// GET /api/v1/auth/login-sso
 func (h *AuthHandler) HandleLogin(c *gin.Context) {
 	if h.DevMode {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -119,8 +118,11 @@ func (h *AuthHandler) HandleCallback(c *gin.Context) {
 		return
 	}
 
-	// Map Authentik groups to internal roles
-	roles := MapGroupsToRoles(claims.Groups)
+	// Map Authentik groups to internal roles (check DB mappings first, fallback to string matching)
+	roles := ResolveGroupRoles(h.DB, claims.Groups)
+	if roles == nil {
+		roles = MapGroupsToRoles(claims.Groups)
+	}
 
 	// Create or update user in the database
 	user, err := h.upsertUser(claims, roles)
@@ -187,12 +189,20 @@ func (h *AuthHandler) HandleMe(c *gin.Context) {
 		return
 	}
 
+	// Fetch user from DB to get must_change_password status
+	var user domain.User
+	mustChange := false
+	if err := h.DB.First(&user, session.UserID).Error; err == nil {
+		mustChange = user.MustChangePassword
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-			"id":           session.UserID,
-			"email":        session.Email,
-			"display_name": session.Name,
-			"roles":        session.Roles,
+			"id":                   session.UserID,
+			"email":                session.Email,
+			"display_name":         session.Name,
+			"roles":                session.Roles,
+			"must_change_password": mustChange,
 		},
 	})
 }
@@ -263,14 +273,23 @@ func (h *AuthHandler) HandleDevLogin(c *gin.Context) {
 	})
 }
 
-// HandleAuthMode returns whether the system is in dev mode or SSO mode.
+// HandleAuthMode returns authentication mode status.
 // GET /api/v1/auth/mode
 func (h *AuthHandler) HandleAuthMode(c *gin.Context) {
-	mode := "sso"
-	if h.DevMode {
-		mode = "dev"
+	ssoEnabled := false
+	if h.OIDCProvider != nil && !h.DevMode {
+		ssoEnabled = true
+	} else {
+		// Also check DB config
+		var config domain.SSOConfig
+		if err := h.DB.First(&config).Error; err == nil && config.Enabled {
+			ssoEnabled = true
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"mode": mode})
+	c.JSON(http.StatusOK, gin.H{
+		"sso_enabled":   ssoEnabled,
+		"local_enabled": true,
+	})
 }
 
 // RegisterRoutes registers the auth routes on a Gin router group.
@@ -278,10 +297,12 @@ func (h *AuthHandler) RegisterRoutes(group *gin.RouterGroup) {
 	auth := group.Group("/auth")
 	{
 		auth.GET("/mode", h.HandleAuthMode)
-		auth.GET("/login", h.HandleLogin)
+		auth.POST("/login", h.HandleLocalLogin)
+		auth.GET("/login-sso", h.HandleLogin)
 		auth.GET("/callback", h.HandleCallback)
 		auth.POST("/logout", h.HandleLogout)
 		auth.GET("/me", h.HandleMe)
+		auth.POST("/change-password", h.HandleChangePassword)
 		auth.POST("/dev-login", h.HandleDevLogin)
 	}
 }

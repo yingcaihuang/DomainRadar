@@ -153,6 +153,9 @@ func checkMX(ctx context.Context, res resolver, domain string) CheckDetail {
 	// MX existence: 10 points
 	detail.Score += 10
 	detail.Findings = append(detail.Findings, fmt.Sprintf("找到 %d 条 MX 记录", len(mxRecords)))
+	for _, mx := range mxRecords {
+		detail.Findings = append(detail.Findings, fmt.Sprintf("  → %s (优先级 %d)", strings.TrimSuffix(mx.Host, "."), mx.Pref))
+	}
 
 	// Check MX target reachability (resolve MX hosts): 10 points
 	reachable := 0
@@ -221,6 +224,7 @@ func checkSPF(ctx context.Context, res resolver, domain string) CheckDetail {
 	// SPF existence: 8 points
 	detail.Score += 8
 	detail.Findings = append(detail.Findings, "找到 SPF 记录")
+	detail.Findings = append(detail.Findings, fmt.Sprintf("  → %s", spfRecords[0]))
 
 	// Single record check: 4 points
 	if len(spfRecords) == 1 {
@@ -423,6 +427,7 @@ func checkDMARC(ctx context.Context, res resolver, domain string) CheckDetail {
 	// DMARC existence: 7 points
 	detail.Score += 7
 	detail.Findings = append(detail.Findings, "找到 DMARC 记录")
+	detail.Findings = append(detail.Findings, fmt.Sprintf("  → %s", dmarcRecord))
 
 	// Policy strength analysis: 8 points
 	policy := extractDMARCPolicy(dmarcRecord)

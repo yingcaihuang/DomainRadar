@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Ignore logout errors
     }
     set({ user: null });
-    window.location.href = '/';
+    window.location.href = '/login';
   },
 
   hasPermission: (permission: string) => {

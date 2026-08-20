@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntdApp } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { AuthGuard } from './components/AuthGuard';
+import { LoginPage } from './pages/LoginPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DomainListPage } from './pages/DomainListPage';
 import { DomainDetailPage } from './pages/DomainDetailPage';
@@ -15,6 +17,8 @@ import { UserManagementPage } from './pages/UserManagementPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { TagsGroupsPage } from './pages/TagsGroupsPage';
 import { ExpirationRulesPage } from './pages/ExpirationRulesPage';
+import { SsoConfigPage } from './pages/SsoConfigPage';
+import { GroupMappingPage } from './pages/GroupMappingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,7 +71,14 @@ function App() {
         <AntdApp>
           <BrowserRouter>
             <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected routes */}
               <Route element={<AuthGuard />}>
+                {/* Change password (inside auth but outside layout for must-change flow) */}
+                <Route path="/change-password" element={<ChangePasswordPage />} />
+
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/domains" element={<DomainListPage />} />
@@ -81,7 +92,9 @@ function App() {
                   <Route path="/settings/registrars" element={<RegistrarSettingsPage />} />
                   <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
                   <Route path="/settings/users" element={<UserManagementPage />} />
+                  <Route path="/settings/group-mappings" element={<GroupMappingPage />} />
                   <Route path="/settings/audit" element={<AuditLogPage />} />
+                  <Route path="/settings/sso" element={<SsoConfigPage />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 </Route>
               </Route>

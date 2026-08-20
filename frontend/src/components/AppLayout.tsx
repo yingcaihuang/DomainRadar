@@ -15,6 +15,8 @@ import {
   BellOutlined,
   CloudServerOutlined,
   TagsOutlined,
+  SafetyOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store';
 
@@ -73,7 +75,9 @@ export function AppLayout() {
     { key: '/settings/rules', icon: <SettingOutlined />, label: '到期规则' },
     { key: '/settings/registrars', icon: <CloudServerOutlined />, label: '注册商' },
     { key: '/settings/notifications', icon: <BellOutlined />, label: '通知渠道' },
+    { key: '/settings/sso', icon: <SafetyOutlined />, label: 'SSO 配置' },
     { key: '/settings/users', icon: <UserOutlined />, label: '用户管理' },
+    { key: '/settings/group-mappings', icon: <TeamOutlined />, label: '组映射' },
     { key: '/settings/audit', icon: <AuditOutlined />, label: '审计日志' },
   ] : [];
 
