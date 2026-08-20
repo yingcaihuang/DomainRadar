@@ -1,2 +1,4 @@
 FROM lissy93/who-dat:latest
+USER root
 RUN apk add --no-cache wget
+USER nobody
