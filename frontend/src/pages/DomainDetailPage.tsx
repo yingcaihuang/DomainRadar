@@ -1,10 +1,10 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, message, Popconfirm, Collapse } from 'antd';
 import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined, PlusOutlined, SyncOutlined, DeleteOutlined, MailOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { domainApi, monitorApi, certApi, emailMonitorApi } from '../services';
-import type { CertMonitor, EmailMonitorData, EmailCheckResultData, EmailCheckDetails } from '../services';
+import type { CertMonitor, EmailMonitorData, EmailCheckResultData, EmailCheckDetails, ServiceMonitorItem, ServiceCheckItem, ServiceMonitorStats } from '../services';
 import { useState } from 'react';
 
 // Format date to Chinese format
@@ -293,10 +293,364 @@ function EmailSecurityTab({ emailMonitorData, emailMonitorLoading, emailHistoryD
   );
 }
 
+// Service Monitor Tab Component
+function ServiceMonitorTab({ domainId, domainName }: { domainId: number; domainName: string }) {
+  const queryClient = useQueryClient();
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm] = Form.useForm();
+  const [selectedMonitorId, setSelectedMonitorId] = useState<number | null>(null);
+
+  const { data: monitorsData, isLoading: monitorsLoading } = useQuery({
+    queryKey: ['service-monitors', domainId],
+    queryFn: () => monitorApi.listMonitors(domainId),
+    enabled: !!domainId,
+  });
+
+  const monitors = monitorsData?.data || [];
+
+  // Auto-select first monitor for chart
+  const activeMonitorId = selectedMonitorId ?? (monitors.length > 0 ? monitors[0].id : null);
+
+  const { data: statsData } = useQuery({
+    queryKey: ['monitor-stats', activeMonitorId],
+    queryFn: () => monitorApi.stats(activeMonitorId!),
+    enabled: !!activeMonitorId,
+  });
+
+  const { data: checksData } = useQuery({
+    queryKey: ['monitor-checks', activeMonitorId],
+    queryFn: () => monitorApi.checks(activeMonitorId!),
+    enabled: !!activeMonitorId,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: { monitor_type: string; target: string; label: string; interval_sec?: number; timeout_sec?: number; expected_status?: number }) =>
+      monitorApi.addMonitor(domainId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-monitors', domainId] });
+      setAddModalOpen(false);
+      addForm.resetFields();
+      message.success('监控已添加');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (monitorId: number) => monitorApi.deleteMonitor(monitorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-monitors', domainId] });
+      message.success('监控已删除');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const checkNowMut = useMutation({
+    mutationFn: (monitorId: number) => monitorApi.checkNow(monitorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-monitors', domainId] });
+      queryClient.invalidateQueries({ queryKey: ['monitor-stats', activeMonitorId] });
+      queryClient.invalidateQueries({ queryKey: ['monitor-checks', activeMonitorId] });
+      message.success('检测完成');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const stats: ServiceMonitorStats | undefined = statsData?.data;
+  const checks: ServiceCheckItem[] = checksData?.data || [];
+
+  const chartData = checks.map((c) => ({
+    time: new Date(c.checked_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    ms: c.response_time_ms,
+    success: c.success,
+  }));
+
+  const monitorTypeOptions = [
+    { value: 'tcp', label: 'TCP' },
+    { value: 'udp', label: 'UDP' },
+    { value: 'http', label: 'HTTP' },
+    { value: 'https', label: 'HTTPS' },
+  ];
+
+  return (
+    <Row gutter={[16, 16]}>
+      {/* Header with Add button */}
+      <Col span={24}>
+        <Card
+          style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}
+          styles={{ body: { padding: '16px 24px' } }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>服务监控探针</span>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>
+              添加监控
+            </Button>
+          </div>
+        </Card>
+      </Col>
+
+      {/* Monitor cards */}
+      {monitorsLoading && <Col span={24}><Spin /></Col>}
+      {monitors.map((m: ServiceMonitorItem) => (
+        <Col xs={24} sm={12} lg={8} key={m.id}>
+          <MonitorCard
+            monitor={m}
+            isSelected={m.id === activeMonitorId}
+            onSelect={() => setSelectedMonitorId(m.id)}
+            onCheckNow={() => checkNowMut.mutate(m.id)}
+            onDelete={() => deleteMutation.mutate(m.id)}
+            checkLoading={checkNowMut.isPending}
+          />
+        </Col>
+      ))}
+
+      {monitors.length === 0 && !monitorsLoading && (
+        <Col span={24}>
+          <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb', textAlign: 'center', padding: 40 }}>
+            <p style={{ color: '#9ca3af', marginBottom: 16 }}>尚未配置监控探针，请点击"添加监控"开始</p>
+          </Card>
+        </Col>
+      )}
+
+      {/* Stats summary for selected monitor */}
+      {stats && activeMonitorId && (
+        <Col span={24}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={8}>
+              <Card title="可用率 (7天)" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <Progress
+                    type="circle"
+                    percent={stats.uptime_percent}
+                    format={(p) => `${p}%`}
+                    status={stats.uptime_percent < 99 ? 'exception' : 'normal'}
+                  />
+                </div>
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card title="响应时间" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="平均">{stats.avg_response_ms?.toFixed(0) || '-'} ms</Descriptions.Item>
+                  <Descriptions.Item label="最大">{stats.max_response_ms || '-'} ms</Descriptions.Item>
+                  <Descriptions.Item label="最小">{stats.min_response_ms || '-'} ms</Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card title="检测统计" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label="总检测">{stats.total_checks} 次</Descriptions.Item>
+                  <Descriptions.Item label="成功">{stats.success_checks} 次</Descriptions.Item>
+                  <Descriptions.Item label="失败">{stats.failed_checks} 次</Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </Col>
+          </Row>
+        </Col>
+      )}
+
+      {/* Response time trend chart */}
+      {chartData.length > 0 && activeMonitorId && (
+        <Col span={24}>
+          <Card title="响应时间趋势" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="time" fontSize={12} />
+                <YAxis unit="ms" fontSize={12} />
+                <Tooltip formatter={(value: any) => [`${value} ms`, '响应时间'] as any} />
+                <Line type="monotone" dataKey="ms" stroke="#6366f1" dot={false} strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      )}
+
+      {/* Detailed timing table */}
+      {checks.length > 0 && (
+        <Col span={24}>
+          <Card title="详细检测记录" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>检测时间</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#374151' }}>状态</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#6366f1' }}>DNS</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#10b981' }}>TCP</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#f59e0b' }}>TLS</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#8b5cf6' }}>首字节</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#06b6d4' }}>下载</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#1f2937' }}>总计</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#374151' }}>状态码</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#374151' }}>IP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checks.slice(-20).reverse().map((check, idx) => (
+                    <tr key={check.id} style={{ borderBottom: '1px solid #f3f4f6', background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#6b7280' }}>{new Date(check.checked_at).toLocaleString('zh-CN')}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: check.success ? '#10b981' : '#ef4444' }} />
+                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#6366f1' }}>{check.dns_ms || 0}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#10b981' }}>{check.tcp_ms || 0}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#f59e0b' }}>{check.tls_ms || 0}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#8b5cf6' }}>{check.ttfb_ms || 0}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#06b6d4' }}>{check.download_ms || 0}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>{check.total_ms || check.response_time_ms}ms</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        {check.status_code > 0 ? <span style={{ background: check.status_code < 400 ? '#dcfce7' : '#fef2f2', color: check.status_code < 400 ? '#15803d' : '#991b1b', padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{check.status_code}</span> : '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{check.connected_ip || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </Col>
+      )}
+      {/* Add Monitor Modal */}
+      <Modal
+        title="添加监控探针"
+        open={addModalOpen}
+        onCancel={() => setAddModalOpen(false)}
+        onOk={() => addForm.submit()}
+        confirmLoading={addMutation.isPending}
+      >
+        <Form
+          form={addForm}
+          layout="vertical"
+          initialValues={{ monitor_type: 'http', interval_sec: 300, timeout_sec: 10, expected_status: 200 }}
+          onFinish={(values) => addMutation.mutate(values)}
+        >
+          <Form.Item label="监控类型" name="monitor_type" rules={[{ required: true }]}>
+            <Select options={monitorTypeOptions} />
+          </Form.Item>
+          <Form.Item label="目标地址" name="target" rules={[{ required: true, message: '请输入目标地址' }]}
+            tooltip="TCP/UDP: host:port; HTTP/HTTPS: 完整URL"
+          >
+            <Input placeholder={`如: ${domainName}:443 或 https://${domainName}`} />
+          </Form.Item>
+          <Form.Item label="标签" name="label">
+            <Input placeholder="如: 主站HTTP, SMTP, API" />
+          </Form.Item>
+          <Form.Item label="检测间隔(秒)" name="interval_sec">
+            <Select options={[
+              { value: 60, label: '60秒 (1分钟)' },
+              { value: 300, label: '300秒 (5分钟)' },
+              { value: 600, label: '600秒 (10分钟)' },
+              { value: 1800, label: '1800秒 (30分钟)' },
+              { value: 3600, label: '3600秒 (1小时)' },
+            ]} />
+          </Form.Item>
+          <Form.Item label="超时(秒)" name="timeout_sec">
+            <Select options={[
+              { value: 5, label: '5秒' },
+              { value: 10, label: '10秒' },
+              { value: 15, label: '15秒' },
+              { value: 30, label: '30秒' },
+            ]} />
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) => prev.monitor_type !== cur.monitor_type}
+          >
+            {({ getFieldValue }) =>
+              (getFieldValue('monitor_type') === 'http' || getFieldValue('monitor_type') === 'https') ? (
+                <Form.Item label="期望状态码" name="expected_status">
+                  <Select options={[
+                    { value: 200, label: '200 OK' },
+                    { value: 201, label: '201 Created' },
+                    { value: 301, label: '301 Moved' },
+                    { value: 302, label: '302 Found' },
+                    { value: 0, label: '不检查状态码' },
+                  ]} />
+                </Form.Item>
+              ) : null
+            }
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Row>
+  );
+}
+
+// Single monitor card component
+function MonitorCard({ monitor, isSelected, onSelect, onCheckNow, onDelete, checkLoading }: {
+  monitor: ServiceMonitorItem;
+  isSelected: boolean;
+  onSelect: () => void;
+  onCheckNow: () => void;
+  onDelete: () => void;
+  checkLoading: boolean;
+}) {
+  const { data: statsData } = useQuery({
+    queryKey: ['monitor-stats', monitor.id],
+    queryFn: () => monitorApi.stats(monitor.id),
+  });
+
+  const stats = statsData?.data;
+  const uptimePercent = stats?.uptime_percent ?? 100;
+
+  const typeColors: Record<string, string> = {
+    tcp: '#1890ff',
+    udp: '#722ed1',
+    http: '#52c41a',
+    https: '#13c2c2',
+  };
+
+  return (
+    <Card
+      hoverable
+      onClick={onSelect}
+      style={{
+        borderRadius: 12,
+        border: isSelected ? '2px solid #6366f1' : '1px solid #e5e7eb',
+        cursor: 'pointer',
+      }}
+      styles={{ body: { padding: 16 } }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <Tag color={typeColors[monitor.monitor_type] || '#666'} style={{ borderRadius: 6, fontWeight: 600 }}>
+            {monitor.monitor_type.toUpperCase()}
+          </Tag>
+          <span style={{ fontWeight: 500, marginLeft: 4 }}>{monitor.label || monitor.target}</span>
+        </div>
+        <Progress type="circle" size={40} percent={uptimePercent} format={(p) => `${p}%`}
+          status={uptimePercent < 99 ? 'exception' : 'normal'}
+        />
+      </div>
+      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8, wordBreak: 'break-all' }}>
+        {monitor.target}
+      </div>
+      {stats && (
+        <div style={{ fontSize: 12, color: '#374151', marginBottom: 12 }}>
+          平均: {stats.avg_response_ms?.toFixed(0) || 0}ms | 最大: {stats.max_response_ms || 0}ms | 最小: {stats.min_response_ms || 0}ms
+        </div>
+      )}
+      <Space>
+        <Button size="small" icon={<SyncOutlined />} loading={checkLoading} onClick={(e) => { e.stopPropagation(); onCheckNow(); }}>
+          立即检测
+        </Button>
+        <Popconfirm title="确认删除此监控?" onConfirm={(e) => { e?.stopPropagation(); onDelete(); }} onCancel={(e) => e?.stopPropagation()}>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()}>
+            删除
+          </Button>
+        </Popconfirm>
+      </Space>
+    </Card>
+  );
+}
+
 export function DomainDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const domainId = Number(id);
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'overview';
   const queryClient = useQueryClient();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm] = Form.useForm();
@@ -313,23 +667,6 @@ export function DomainDetailPage() {
     enabled: !!domainId,
   });
 
-  const { data: uptimeData } = useQuery({
-    queryKey: ['uptime', domainId],
-    queryFn: () => monitorApi.uptime(domainId, '7d'),
-    enabled: !!domainId,
-  });
-
-  const { data: certData } = useQuery({
-    queryKey: ['certificate', domainId],
-    queryFn: () => monitorApi.certificate(domainId),
-    enabled: !!domainId,
-  });
-
-  const { data: websiteData } = useQuery({
-    queryKey: ['website-checks', domainId],
-    queryFn: () => monitorApi.website(domainId),
-    enabled: !!domainId,
-  });
 
   // Certificate monitoring queries
   const { data: certMonitors, isLoading: certMonitorsLoading } = useQuery({
@@ -407,11 +744,6 @@ export function DomainDetailPage() {
   if (!domain) return <div>域名未找到</div>;
 
   const whois = whoisData?.data;
-
-  const responseTimeData = websiteData?.checks?.slice(0, 30).reverse().map((c: any) => ({
-    time: new Date(c.checked_at).toLocaleTimeString(),
-    ms: c.response_time_ms,
-  })) || [];
 
   const tabItems = [
     {
@@ -527,54 +859,7 @@ export function DomainDetailPage() {
     {
       key: 'monitoring',
       label: '监控数据',
-      children: (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={8}>
-            <Card title="可用率 (7天)" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
-              <div style={{ textAlign: 'center' }}>
-                <Progress type="circle" percent={uptimeData?.uptime_percentage || 0} format={(p) => `${p}%`}
-                  status={uptimeData && uptimeData.uptime_percentage < 99 ? 'exception' : 'normal'} />
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card title="响应时间" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="平均">{uptimeData?.avg_response_time_ms?.toFixed(0) || '-'} ms</Descriptions.Item>
-                <Descriptions.Item label="最大">{uptimeData?.max_response_time_ms || '-'} ms</Descriptions.Item>
-                <Descriptions.Item label="最小">{uptimeData?.min_response_time_ms || '-'} ms</Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card title="SSL 证书" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
-              {certData?.latest ? (
-                <Descriptions column={1} size="small">
-                  <Descriptions.Item label="颁发机构">{certData.latest.issuer}</Descriptions.Item>
-                  <Descriptions.Item label="到期时间">{formatDate(certData.latest.valid_to)}</Descriptions.Item>
-                  <Descriptions.Item label="剩余天数">{certData.latest.days_remaining} 天</Descriptions.Item>
-                  <Descriptions.Item label="证书链">{certData.latest.chain_complete ? <Tag color="green">完整</Tag> : <Tag color="red">不完整</Tag>}</Descriptions.Item>
-                </Descriptions>
-              ) : <p style={{ color: '#9ca3af', textAlign: 'center' }}>暂无证书数据</p>}
-            </Card>
-          </Col>
-          <Col span={24}>
-            <Card title="响应时间趋势" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
-              {responseTimeData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={responseTimeData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="time" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="ms" stroke="#6366f1" dot={false} strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : <p style={{ color: '#9ca3af', textAlign: 'center' }}>暂无监控数据</p>}
-            </Card>
-          </Col>
-        </Row>
-      ),
+      children: <ServiceMonitorTab domainId={domainId} domainName={domain.domain_name} />,
     },
     {
       key: 'cert-monitor',
@@ -796,7 +1081,7 @@ export function DomainDetailPage() {
         </p>
       </div>
 
-      <Tabs items={tabItems} />
+      <Tabs items={tabItems} defaultActiveKey={defaultTab} />
     </div>
   );
 }

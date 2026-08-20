@@ -423,6 +423,41 @@ type GroupMapping struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// ServiceMonitor defines a monitoring probe endpoint.
+type ServiceMonitor struct {
+	ID             uint             `gorm:"primaryKey" json:"id"`
+	DomainID       uint             `gorm:"index;not null" json:"domain_id"`
+	MonitorType    string           `gorm:"size:10;not null" json:"monitor_type"` // "tcp", "udp", "http", "https"
+	Target         string           `gorm:"size:500;not null" json:"target"`      // host:port for tcp/udp, full URL for http/https
+	Label          string           `gorm:"size:100" json:"label"`               // e.g. "主站HTTP", "SMTP"
+	IntervalSec    int              `gorm:"default:300" json:"interval_sec"`      // Check interval in seconds (default 5min)
+	TimeoutSec     int              `gorm:"default:10" json:"timeout_sec"`        // Timeout in seconds
+	ExpectedStatus int              `gorm:"default:200" json:"expected_status"`   // Expected HTTP status code (for http/https)
+	Enabled        bool             `gorm:"default:true" json:"enabled"`
+	CreatedAt      time.Time        `json:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at"`
+	Domain         NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+}
+
+// ServiceCheck records one probe result with detailed timing breakdown.
+type ServiceCheck struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	MonitorID      uint      `gorm:"index;not null" json:"monitor_id"`
+	DomainID       uint      `gorm:"index;not null" json:"domain_id"`
+	Success        bool      `json:"success"`
+	ResponseTimeMs int64     `json:"response_time_ms"`
+	DNSMs          int64     `json:"dns_ms"`           // DNS resolution time
+	TCPMs          int64     `json:"tcp_ms"`           // TCP handshake time
+	TLSMs          int64     `json:"tls_ms"`           // TLS handshake time (0 for non-TLS)
+	TTFBMs         int64     `json:"ttfb_ms"`          // Time to first byte
+	DownloadMs     int64     `json:"download_ms"`      // Body download time
+	TotalMs        int64     `json:"total_ms"`         // Total request time
+	StatusCode     int       `json:"status_code"`
+	ConnectedIP    string    `gorm:"size:50" json:"connected_ip"`
+	Error          string    `gorm:"size:500" json:"error"`
+	CheckedAt      time.Time `gorm:"index;not null" json:"checked_at"`
+}
+
 // AllModels returns all GORM model types for use in auto-migration.
 func AllModels() []interface{} {
 	return []interface{}{
@@ -449,6 +484,8 @@ func AllModels() []interface{} {
 		&ExpirationRule{},
 		&EmailAlertRule{},
 		&GroupMapping{},
+		&ServiceMonitor{},
+		&ServiceCheck{},
 	}
 }
 

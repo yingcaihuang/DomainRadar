@@ -135,6 +135,10 @@ func main() {
 	emailScheduler := emailcheck.NewEmailScheduler(db, logger, 0)
 	emailScheduler.Start(context.Background())
 
+	// Start service monitor scheduler (periodic probe checks)
+	monitorScheduler := monitor.NewMonitorScheduler(db, logger)
+	monitorScheduler.Start(context.Background())
+
 	// Initialize router
 	router := setupRouter(
 		sm,

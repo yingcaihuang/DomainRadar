@@ -109,6 +109,14 @@ export const monitorApi = {
   },
   certificate: (domainId: number) => request<{ domain_id: number; latest: any; history: any[] }>(`/monitoring/certificates/${domainId}`),
   email: (domainId: number) => request<{ domain_id: number; latest: any; history: any[] }>(`/monitoring/email/${domainId}`),
+  // Service monitors
+  listMonitors: (domainId: number) => request<{ data: ServiceMonitorItem[] }>(`/domains/${domainId}/monitors`),
+  addMonitor: (domainId: number, data: { monitor_type: string; target: string; label: string; interval_sec?: number; timeout_sec?: number; expected_status?: number }) =>
+    request<{ data: ServiceMonitorItem }>(`/domains/${domainId}/monitors`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteMonitor: (monitorId: number) => request(`/monitors/${monitorId}`, { method: 'DELETE' }),
+  checkNow: (monitorId: number) => request<{ data: ServiceCheckItem }>(`/monitors/${monitorId}/check`, { method: 'POST' }),
+  stats: (monitorId: number) => request<{ data: ServiceMonitorStats }>(`/monitors/${monitorId}/stats`),
+  checks: (monitorId: number) => request<{ data: ServiceCheckItem[] }>(`/monitors/${monitorId}/checks`),
 };
 
 // Registrar configuration
@@ -328,3 +336,47 @@ export const ssoConfigApi = {
   discover: (data: { issuer_url: string }) =>
     request<{ success: boolean; message?: string; data?: any }>('/config/sso/discover', { method: 'POST', body: JSON.stringify(data) }),
 };
+
+// Service Monitor types
+export interface ServiceMonitorItem {
+  id: number;
+  domain_id: number;
+  monitor_type: string;
+  target: string;
+  label: string;
+  interval_sec: number;
+  timeout_sec: number;
+  expected_status: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceCheckItem {
+  id: number;
+  monitor_id: number;
+  domain_id: number;
+  success: boolean;
+  response_time_ms: number;
+  dns_ms: number;
+  tcp_ms: number;
+  tls_ms: number;
+  ttfb_ms: number;
+  download_ms: number;
+  total_ms: number;
+  status_code: number;
+  connected_ip: string;
+  error: string;
+  checked_at: string;
+}
+
+export interface ServiceMonitorStats {
+  monitor_id: number;
+  total_checks: number;
+  success_checks: number;
+  failed_checks: number;
+  uptime_percent: number;
+  avg_response_ms: number;
+  max_response_ms: number;
+  min_response_ms: number;
+}

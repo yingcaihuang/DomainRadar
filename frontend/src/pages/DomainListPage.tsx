@@ -157,19 +157,23 @@ export function DomainListPage() {
         const r = record as any;
         const certTip = r.cert_monitor_enabled
           ? `证书监控: 已启用${r.cert_days_remaining != null ? ' | 剩余' + r.cert_days_remaining + '天' : ''}`
-          : '证书监控: 未启用';
+          : '证书监控: 未启用（点击配置）';
         const emailTip = r.email_monitor_enabled
           ? `邮件监控: 已启用${r.email_score != null ? ' | 评分' + r.email_score + '/100' : ''}`
-          : '邮件监控: 未启用';
+          : '邮件监控: 未启用（点击配置）';
         const certColor = !r.cert_monitor_enabled ? '#d1d5db' : r.cert_days_remaining != null && r.cert_days_remaining <= 30 ? '#f59e0b' : '#10b981';
         const emailColor = !r.email_monitor_enabled ? '#d1d5db' : r.email_score != null && r.email_score < 70 ? '#f59e0b' : '#10b981';
         return (
           <Space size={4}>
             <Tooltip title={certTip}>
-              <span style={{ color: certColor, fontSize: 16, cursor: 'pointer' }}><SafetyCertificateOutlined /></span>
+              <span style={{ color: certColor, fontSize: 16, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=cert-monitor`); }}>
+                <SafetyCertificateOutlined />
+              </span>
             </Tooltip>
             <Tooltip title={emailTip}>
-              <span style={{ color: emailColor, fontSize: 16, cursor: 'pointer' }}><MailOutlined /></span>
+              <span style={{ color: emailColor, fontSize: 16, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=email-security`); }}>
+                <MailOutlined />
+              </span>
             </Tooltip>
           </Space>
         );
