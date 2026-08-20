@@ -1,0 +1,2 @@
+FROM lissy93/who-dat:latest
+RUN apk add --no-cache wget

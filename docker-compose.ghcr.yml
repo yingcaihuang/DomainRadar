@@ -42,17 +42,17 @@ services:
       - domainradar-net
 
   who-dat:
-    image: lissy93/who-dat
+    image: ghcr.io/yingcaihuang/domainradar-who-dat:latest
     container_name: domainradar-who-dat
     dns:
       - 8.8.8.8
       - 8.8.4.4
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/ || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
     networks:
       - domainradar-net
@@ -77,14 +77,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
     depends_on:
       postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
       who-dat:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     networks:
       - domainradar-net
