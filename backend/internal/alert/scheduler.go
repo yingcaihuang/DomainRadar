@@ -12,10 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// AlertDispatchFunc is a callback to send webhook notifications for new alerts.
+type AlertDispatchFunc func(alert *domain.Alert)
+
 // AlertScheduler scans domains and generates expiration alerts + updates health scores.
 type AlertScheduler struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db             *gorm.DB
+	logger         *zap.Logger
+	OnAlertCreated AlertDispatchFunc
 }
 
 // NewAlertScheduler creates a new AlertScheduler.
@@ -83,6 +87,8 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 			}
 			if err := s.db.WithContext(ctx).Create(&alert).Error; err != nil {
 				s.logger.Error("failed to create alert", zap.String("domain", d.DomainName), zap.Error(err))
+			} else if s.OnAlertCreated != nil {
+				s.OnAlertCreated(&alert)
 			}
 		}
 	}

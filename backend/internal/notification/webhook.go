@@ -45,7 +45,7 @@ func NewWebhookChannel(config *ChannelConfig) *WebhookChannel {
 	}
 
 	return &WebhookChannel{
-		TargetURL:  config.GetSetting("url"),
+		TargetURL:  config.GetSetting("webhook_url"),
 		Headers:    headers,
 		HTTPClient: &http.Client{Timeout: 10 * time.Second},
 	}
@@ -100,7 +100,56 @@ func (c *WebhookChannel) TestConnection(ctx context.Context, config *ChannelConf
 
 // postPayload marshals and sends a JSON payload to the target URL.
 func (c *WebhookChannel) postPayload(ctx context.Context, url string, headers map[string]string, payload *WebhookPayload) error {
-	body, err := json.Marshal(payload)
+	// Auto-detect platform and format payload accordingly
+	var body []byte
+	var err error
+
+	msg := fmt.Sprintf("[%s] %s\n域名: %s\n%s", payload.AlertSeverity, payload.AlertType, payload.DomainName, payload.Message)
+
+	if strings.Contains(url, "dingtalk.com") || strings.Contains(url, "oapi.dingtalk.com") {
+		// DingTalk robot format
+		dingPayload := map[string]interface{}{
+			"msgtype": "markdown",
+			"markdown": map[string]string{
+				"title": fmt.Sprintf("DomainRadar: %s", payload.AlertType),
+				"text":  fmt.Sprintf("## DomainRadar 告警\n\n**级别:** %s\n\n**类型:** %s\n\n**域名:** %s\n\n**详情:** %s\n\n**时间:** %s", payload.AlertSeverity, payload.AlertType, payload.DomainName, payload.Message, payload.TriggeredAt.Format("2006-01-02 15:04:05")),
+			},
+		}
+		body, err = json.Marshal(dingPayload)
+	} else if strings.Contains(url, "qyapi.weixin.qq.com") {
+		// WeCom (企业微信) robot format
+		wecomPayload := map[string]interface{}{
+			"msgtype": "markdown",
+			"markdown": map[string]string{
+				"content": fmt.Sprintf("## DomainRadar 告警\n>**级别:** %s\n>**类型:** %s\n>**域名:** %s\n>**详情:** %s\n>**时间:** %s", payload.AlertSeverity, payload.AlertType, payload.DomainName, payload.Message, payload.TriggeredAt.Format("2006-01-02 15:04:05")),
+			},
+		}
+		body, err = json.Marshal(wecomPayload)
+	} else if strings.Contains(url, "feishu.cn") || strings.Contains(url, "larksuite.com") {
+		// Feishu (飞书) robot format
+		feishuPayload := map[string]interface{}{
+			"msg_type": "interactive",
+			"card": map[string]interface{}{
+				"header": map[string]interface{}{
+					"title": map[string]string{"tag": "plain_text", "content": "DomainRadar 告警"},
+				},
+				"elements": []map[string]interface{}{
+					{"tag": "div", "text": map[string]string{"tag": "lark_md", "content": fmt.Sprintf("**级别:** %s\n**类型:** %s\n**域名:** %s\n**详情:** %s\n**时间:** %s", payload.AlertSeverity, payload.AlertType, payload.DomainName, payload.Message, payload.TriggeredAt.Format("2006-01-02 15:04:05"))}},
+				},
+			},
+		}
+		body, err = json.Marshal(feishuPayload)
+	} else if strings.Contains(url, "hooks.slack.com") {
+		// Slack webhook format
+		slackPayload := map[string]interface{}{
+			"text": msg,
+		}
+		body, err = json.Marshal(slackPayload)
+	} else {
+		// Generic JSON format (default)
+		body, err = json.Marshal(payload)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to marshal webhook payload: %w", err)
 	}

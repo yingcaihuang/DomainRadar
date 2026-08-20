@@ -66,6 +66,10 @@ export interface DashboardData {
   cert_expiring: number;
   email_monitors: number;
   email_avg_score: number;
+  service_monitors: { domain_name: string; uptime_percent: number; monitor_count: number }[];
+  certificate_summary: { domain_name: string; endpoint: string; days_remaining: number; subject: string }[];
+  email_grades: { grade_a: number; grade_b: number; grade_c: number; grade_d: number; items: { domain_name: string; total_score: number; grade: string }[] };
+  whois_status: { checked: number; unchecked: number; last_checked: string; next_check: string };
 }
 
 export interface RegistrarGroup {

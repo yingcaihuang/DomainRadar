@@ -13,10 +13,14 @@ import (
 )
 
 // CertScheduler periodically checks all enabled certificate monitors.
+// AlertDispatchFunc is a callback for webhook notification dispatch.
+type AlertDispatchFunc func(alert *domain.Alert)
+
 type CertScheduler struct {
-	db       *gorm.DB
-	logger   *zap.Logger
-	interval time.Duration
+	db             *gorm.DB
+	logger         *zap.Logger
+	interval       time.Duration
+	OnAlertCreated AlertDispatchFunc
 }
 
 // NewCertScheduler creates a new CertScheduler.
@@ -181,6 +185,9 @@ func (s *CertScheduler) maybeCreateAlert(ctx context.Context, monitor domain.Cer
 				zap.Error(err),
 			)
 			return false
+		}
+		if s.OnAlertCreated != nil {
+			s.OnAlertCreated(&alert)
 		}
 		return true
 	}

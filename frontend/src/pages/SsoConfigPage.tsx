@@ -176,16 +176,25 @@ export function SsoConfigPage() {
 
           <Divider style={{ margin: '16px 0' }} />
 
-          <Space direction="vertical" size={12}>
-            <Form.Item name="show_on_login_page" valuePropName="checked" style={{ marginBottom: 0 }}>
-              <Switch checkedChildren="开" unCheckedChildren="关" /> <span style={{ marginLeft: 8 }}>在登录页显示"统一认证入口"按钮</span>
-            </Form.Item>
-            <Form.Item name="cookie_secure" valuePropName="checked" style={{ marginBottom: 0 }}>
-              <Switch checkedChildren="开" unCheckedChildren="关" /> <span style={{ marginLeft: 8 }}>Cookie Secure 模式（仅 HTTPS 环境启用）</span>
-            </Form.Item>
-            <Form.Item name="enabled" valuePropName="checked" style={{ marginBottom: 0 }}>
-              <Switch checkedChildren="开" unCheckedChildren="关" /> <span style={{ marginLeft: 8, fontWeight: 600 }}>启用 SSO 单点登录</span>
-            </Form.Item>
+          <Space direction="vertical" size={16}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Form.Item name="show_on_login_page" valuePropName="checked" noStyle>
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <span>在登录页显示"统一认证入口"按钮</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Form.Item name="cookie_secure" valuePropName="checked" noStyle>
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <span>Cookie Secure 模式（仅 HTTPS 环境启用）</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Form.Item name="enabled" valuePropName="checked" noStyle>
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <span style={{ fontWeight: 600 }}>启用 SSO 单点登录</span>
+            </div>
           </Space>
         </Card>
 

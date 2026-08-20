@@ -31,7 +31,7 @@ func NewWhoisScheduler(db *gorm.DB, logger *zap.Logger) *WhoisScheduler {
 func (s *WhoisScheduler) Start(ctx context.Context) {
 	go func() {
 		// Wait 2 minutes before first run to allow other services to start
-		time.Sleep(2 * time.Minute)
+		time.Sleep(10 * time.Second)
 		s.runChecks(ctx)
 
 		ticker := time.NewTicker(s.interval)

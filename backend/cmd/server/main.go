@@ -111,6 +111,7 @@ func main() {
 
 	// Notification handler with channel registry
 	channelRegistry := notification.NewChannelRegistry()
+	channelRegistry.Register("webhook", func(config *notification.ChannelConfig) notification.NotificationChannel { return notification.NewWebhookChannel(config) })
 	notificationHandler := notification.NewNotificationHandler(db, cryptoService, channelRegistry, auditService, logger)
 
 	// Rules handlers
@@ -123,12 +124,21 @@ func main() {
 	// Email monitoring handler
 	emailHandler := emailcheck.NewEmailHandler(db, logger)
 
+	// Create notification dispatcher for webhook alerts
+	alertDispatcher := notification.NewAlertDispatcher(db, cryptoService, channelRegistry, logger)
+
 	// Start alert scheduler (health score updates + expiration alerts)
 	alertScheduler := alert.NewAlertScheduler(db, logger)
+	alertScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 	alertScheduler.Start(context.Background())
 
 	// Start certificate scheduler (periodic TLS checks)
 	certScheduler := certcheck.NewCertScheduler(db, logger, 0)
+	certScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 	certScheduler.Start(context.Background())
 
 	// Start email monitoring scheduler (periodic email DNS checks)
@@ -136,6 +146,11 @@ func main() {
 	emailScheduler.Start(context.Background())
 
 	// Start service monitor scheduler (periodic probe checks)
+	// Start WHOIS scheduler (daily)
+	whoisScheduler := domainmgmt.NewWhoisScheduler(db, logger)
+	whoisScheduler.Start(context.Background())
+
+
 	monitorScheduler := monitor.NewMonitorScheduler(db, logger)
 	monitorScheduler.Start(context.Background())
 
