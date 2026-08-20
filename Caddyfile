@@ -1,13 +1,8 @@
 {$SITE_DOMAIN::80} {
-	# API requests → backend
-	handle /api/* {
-		reverse_proxy backend:8080
-	}
+    @api path /api/*
+    reverse_proxy @api backend:8080
 
-	# Frontend SPA
-	handle {
-		root * /srv/frontend
-		try_files {path} /index.html
-		file_server
-	}
+    root * /srv/frontend
+    try_files {path} /index.html
+    file_server
 }

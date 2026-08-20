@@ -8,7 +8,7 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-# Stage 2: Caddy with pre-built frontend
-FROM caddy:2-alpine
+# Stage 2: Caddy 2.11 with pre-built frontend
+FROM caddy:2.11-alpine
 COPY --from=frontend-builder /app/dist /srv/frontend
 COPY Caddyfile /etc/caddy/Caddyfile
