@@ -24,6 +24,7 @@ type NormalizedDomain struct {
 	LockStatus             bool           `json:"lock_status"`
 	DataSourceType         string         `gorm:"size:20" json:"data_source_type"` // "api", "whois", "manual"
 	LastSyncAt             *time.Time     `json:"last_sync_at"`
+	WhoisLastCheckedAt     *time.Time     `json:"whois_last_checked_at"`
 	GroupID                *uint          `gorm:"index" json:"group_id"`
 	Notes                  string         `gorm:"type:text" json:"notes"`
 	WebsiteURL             string         `gorm:"size:2048" json:"website_url"`

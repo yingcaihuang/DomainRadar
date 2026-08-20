@@ -135,6 +135,10 @@ type DomainResponse struct {
 	CertDaysRemaining       *int            `json:"cert_days_remaining,omitempty"`
 	EmailMonitorEnabled     bool            `json:"email_monitor_enabled"`
 	EmailScore              *int            `json:"email_score,omitempty"`
+	WhoisChecked            bool            `json:"whois_checked"`
+	WhoisLastCheckedAt      *time.Time      `json:"whois_last_checked_at,omitempty"`
+	ServiceMonitorEnabled   bool            `json:"service_monitor_enabled"`
+	ServiceUptimePercent    *float64        `json:"service_uptime_percent,omitempty"`
 	CreatedAt               time.Time       `json:"created_at"`
 	UpdatedAt               time.Time       `json:"updated_at"`
 }
@@ -365,6 +369,32 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		}
 	}
 
+	// Service monitor data
+	svcMonitorMap := make(map[uint]bool)
+	svcUptimeMap := make(map[uint]float64)
+	if len(domainIDs) > 0 {
+		var svcMonitors []domain.ServiceMonitor
+		h.db.Where("domain_id IN ? AND enabled = ?", domainIDs, true).Find(&svcMonitors)
+		for _, m := range svcMonitors {
+			svcMonitorMap[m.DomainID] = true
+		}
+		// Get uptime for domains with monitors
+		type uptimeRow struct {
+			DomainID uint
+			Total    int64
+			Success  int64
+		}
+		var uptimeRows []uptimeRow
+		since := time.Now().Add(-7 * 24 * time.Hour)
+		h.db.Raw(`SELECT domain_id, COUNT(*) as total, SUM(CASE WHEN success THEN 1 ELSE 0 END) as success FROM service_checks WHERE domain_id IN ? AND checked_at >= ? GROUP BY domain_id`, domainIDs, since).Scan(&uptimeRows)
+		for _, r := range uptimeRows {
+			if r.Total > 0 {
+				pct := float64(r.Success) / float64(r.Total) * 100
+				svcUptimeMap[r.DomainID] = pct
+			}
+		}
+	}
+
 	responses := make([]DomainResponse, 0, len(domains))
 	for _, d := range domains {
 		resp := toDomainResponse(d)
@@ -375,6 +405,12 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		}
 		if score, ok := emailScoreMap[d.ID]; ok {
 			resp.EmailScore = &score
+		}
+		resp.WhoisChecked = d.WhoisLastCheckedAt != nil
+		resp.WhoisLastCheckedAt = d.WhoisLastCheckedAt
+		resp.ServiceMonitorEnabled = svcMonitorMap[d.ID]
+		if pct, ok := svcUptimeMap[d.ID]; ok {
+			resp.ServiceUptimePercent = &pct
 		}
 		responses = append(responses, resp)
 	}

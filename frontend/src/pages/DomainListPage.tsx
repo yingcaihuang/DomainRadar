@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App, Tooltip } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, SafetyCertificateOutlined, MailOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
 
@@ -152,29 +152,35 @@ export function DomainListPage() {
     {
       title: '监控',
       key: 'monitors',
-      width: 100,
+      width: 140,
       render: (_: any, record: Domain) => {
         const r = record as any;
+        // WHOIS status
+        const whoisTip = r.whois_checked
+          ? `WHOIS: 已检测${r.whois_last_checked_at ? ' (' + new Date(r.whois_last_checked_at).toLocaleDateString('zh-CN') + ')' : ''}`
+          : 'WHOIS: 未检测（点击查看）';
+        const whoisColor = r.whois_checked ? '#6366f1' : '#d1d5db';
+        // Service monitor
+        const svcTip = r.service_monitor_enabled
+          ? `服务监控: 已启用${r.service_uptime_percent != null ? ' | 可用率' + r.service_uptime_percent.toFixed(1) + '%' : ''}`
+          : '服务监控: 未配置（点击添加）';
+        const svcColor = !r.service_monitor_enabled ? '#d1d5db' : r.service_uptime_percent != null && r.service_uptime_percent < 100 ? '#f59e0b' : '#10b981';
+        // Cert
         const certTip = r.cert_monitor_enabled
-          ? `证书监控: 已启用${r.cert_days_remaining != null ? ' | 剩余' + r.cert_days_remaining + '天' : ''}`
-          : '证书监控: 未启用（点击配置）';
-        const emailTip = r.email_monitor_enabled
-          ? `邮件监控: 已启用${r.email_score != null ? ' | 评分' + r.email_score + '/100' : ''}`
-          : '邮件监控: 未启用（点击配置）';
+          ? `证书: 已启用${r.cert_days_remaining != null ? ' | 剩余' + r.cert_days_remaining + '天' : ''}`
+          : '证书: 未配置';
         const certColor = !r.cert_monitor_enabled ? '#d1d5db' : r.cert_days_remaining != null && r.cert_days_remaining <= 30 ? '#f59e0b' : '#10b981';
+        // Email
+        const emailTip = r.email_monitor_enabled
+          ? `邮件: 已启用${r.email_score != null ? ' | ' + r.email_score + '分' : ''}`
+          : '邮件: 未配置';
         const emailColor = !r.email_monitor_enabled ? '#d1d5db' : r.email_score != null && r.email_score < 70 ? '#f59e0b' : '#10b981';
         return (
-          <Space size={4}>
-            <Tooltip title={certTip}>
-              <span style={{ color: certColor, fontSize: 16, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=cert-monitor`); }}>
-                <SafetyCertificateOutlined />
-              </span>
-            </Tooltip>
-            <Tooltip title={emailTip}>
-              <span style={{ color: emailColor, fontSize: 16, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=email-security`); }}>
-                <MailOutlined />
-              </span>
-            </Tooltip>
+          <Space size={3}>
+            <Tooltip title={whoisTip}><span style={{ color: whoisColor, fontSize: 15, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=whois`); }}><GlobalOutlined /></span></Tooltip>
+            <Tooltip title={svcTip}><span style={{ color: svcColor, fontSize: 15, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=monitoring`); }}><CloudOutlined /></span></Tooltip>
+            <Tooltip title={certTip}><span style={{ color: certColor, fontSize: 15, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=cert-monitor`); }}><SafetyCertificateOutlined /></span></Tooltip>
+            <Tooltip title={emailTip}><span style={{ color: emailColor, fontSize: 15, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigate(`/domains/${record.id}?tab=email-security`); }}><MailOutlined /></span></Tooltip>
           </Space>
         );
       },
