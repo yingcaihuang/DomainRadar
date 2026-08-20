@@ -73,6 +73,7 @@ func (s *CertScheduler) RunAllChecks(ctx context.Context) error {
 
 		// Store the check result
 		sansJSON, _ := json.Marshal(result.SANs)
+		chainJSON, _ := json.Marshal(result.Chain)
 		check := domain.CertificateCheck{
 			DomainID:      m.DomainID,
 			MonitorID:     m.ID,
@@ -83,10 +84,32 @@ func (s *CertScheduler) RunAllChecks(ctx context.Context) error {
 			DaysRemaining: result.DaysRemaining,
 			ChainComplete: result.ChainComplete,
 			SANs:          string(sansJSON),
+			Chain:         string(chainJSON),
 			SerialNumber:  result.SerialNumber,
+			ConnectedIP:   result.ConnectedIP,
+			SNI:           result.SNI,
+			DNSResolveMs:  result.DNSResolveMs,
+			HandshakeMs:   result.HandshakeMs,
+			TotalMs:       result.TotalMs,
+			TLSVersion:    result.TLSVersion,
+			CipherSuite:   result.CipherSuite,
 			Error:         result.Error,
 			CheckedAt:     now,
 		}
+
+		// Keep only last 10 records per monitor
+		var oldChecks []domain.CertificateCheck
+		s.db.WithContext(ctx).Where("monitor_id = ?", m.ID).Order("checked_at DESC").Offset(10).Find(&oldChecks)
+		for _, old := range oldChecks {
+			s.db.WithContext(ctx).Delete(&old)
+		}
+
+		// Update monitor timestamps
+		nextCheck := now.Add(s.interval)
+		s.db.WithContext(ctx).Model(&m).Updates(map[string]interface{}{
+			"last_checked_at": now,
+			"next_check_at":   nextCheck,
+		})
 
 		if err := s.db.WithContext(ctx).Create(&check).Error; err != nil {
 			s.logger.Error("failed to save cert check", zap.String("endpoint", m.Endpoint), zap.Error(err))

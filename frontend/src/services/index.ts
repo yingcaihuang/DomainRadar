@@ -189,6 +189,8 @@ export interface CertMonitor {
   endpoint: string;
   label: string;
   enabled: boolean;
+  last_checked_at: string | null;
+  next_check_at: string | null;
   created_at: string;
   latest?: CertCheckResult;
 }
@@ -202,6 +204,14 @@ export interface CertCheckResult {
   days_remaining: number;
   sans: string[];
   chain_complete: boolean;
+  chain: { subject: string; issuer: string; valid_from: string; valid_to: string; serial_number: string; is_ca: boolean; sans?: string[] }[];
   error?: string;
+  connected_ip: string;
+  sni: string;
+  dns_resolve_ms: number;
+  handshake_ms: number;
+  total_ms: number;
+  tls_version: string;
+  cipher_suite: string;
   checked_at: string;
 }

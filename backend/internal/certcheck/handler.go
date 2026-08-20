@@ -52,26 +52,36 @@ type addMonitorRequest struct {
 }
 
 type monitorResponse struct {
-	ID        uint               `json:"id"`
-	DomainID  uint               `json:"domain_id"`
-	Endpoint  string             `json:"endpoint"`
-	Label     string             `json:"label"`
-	Enabled   bool               `json:"enabled"`
-	CreatedAt time.Time          `json:"created_at"`
-	Latest    *checkResponse     `json:"latest,omitempty"`
+	ID            uint           `json:"id"`
+	DomainID      uint           `json:"domain_id"`
+	Endpoint      string         `json:"endpoint"`
+	Label         string         `json:"label"`
+	Enabled       bool           `json:"enabled"`
+	LastCheckedAt *time.Time     `json:"last_checked_at"`
+	NextCheckAt   *time.Time     `json:"next_check_at"`
+	CreatedAt     time.Time      `json:"created_at"`
+	Latest        *checkResponse `json:"latest,omitempty"`
 }
 
 type checkResponse struct {
-	ID            uint      `json:"id"`
-	Subject       string    `json:"subject"`
-	Issuer        string    `json:"issuer"`
-	ValidFrom     time.Time `json:"valid_from"`
-	ValidTo       time.Time `json:"valid_to"`
-	DaysRemaining int       `json:"days_remaining"`
-	SANs          []string  `json:"sans"`
-	ChainComplete bool      `json:"chain_complete"`
-	Error         string    `json:"error,omitempty"`
-	CheckedAt     time.Time `json:"checked_at"`
+	ID            uint        `json:"id"`
+	Subject       string      `json:"subject"`
+	Issuer        string      `json:"issuer"`
+	ValidFrom     time.Time   `json:"valid_from"`
+	ValidTo       time.Time   `json:"valid_to"`
+	DaysRemaining int         `json:"days_remaining"`
+	SANs          []string    `json:"sans"`
+	ChainComplete bool        `json:"chain_complete"`
+	Chain         []ChainCert `json:"chain"`
+	Error         string      `json:"error,omitempty"`
+	ConnectedIP   string      `json:"connected_ip"`
+	SNI           string      `json:"sni"`
+	DNSResolveMs  int64       `json:"dns_resolve_ms"`
+	HandshakeMs   int64       `json:"handshake_ms"`
+	TotalMs       int64       `json:"total_ms"`
+	TLSVersion    string      `json:"tls_version"`
+	CipherSuite   string      `json:"cipher_suite"`
+	CheckedAt     time.Time   `json:"checked_at"`
 }
 
 // --- Handlers ---
@@ -94,12 +104,14 @@ func (h *CertHandler) ListMonitors(c *gin.Context) {
 	responses := make([]monitorResponse, 0, len(monitors))
 	for _, m := range monitors {
 		resp := monitorResponse{
-			ID:        m.ID,
-			DomainID:  m.DomainID,
-			Endpoint:  m.Endpoint,
-			Label:     m.Label,
-			Enabled:   m.Enabled,
-			CreatedAt: m.CreatedAt,
+			ID:            m.ID,
+			DomainID:      m.DomainID,
+			Endpoint:      m.Endpoint,
+			Label:         m.Label,
+			Enabled:       m.Enabled,
+			LastCheckedAt: m.LastCheckedAt,
+			NextCheckAt:   m.NextCheckAt,
+			CreatedAt:     m.CreatedAt,
 		}
 
 		// Get the latest check for this monitor
@@ -210,6 +222,7 @@ func (h *CertHandler) CheckNow(c *gin.Context) {
 
 	// Store the result
 	sansJSON, _ := json.Marshal(result.SANs)
+	chainJSON, _ := json.Marshal(result.Chain)
 	check := domain.CertificateCheck{
 		DomainID:      monitor.DomainID,
 		MonitorID:     monitor.ID,
@@ -220,7 +233,15 @@ func (h *CertHandler) CheckNow(c *gin.Context) {
 		DaysRemaining: result.DaysRemaining,
 		ChainComplete: result.ChainComplete,
 		SANs:          string(sansJSON),
+		Chain:         string(chainJSON),
 		SerialNumber:  result.SerialNumber,
+		ConnectedIP:   result.ConnectedIP,
+		SNI:           result.SNI,
+		DNSResolveMs:  result.DNSResolveMs,
+		HandshakeMs:   result.HandshakeMs,
+		TotalMs:       result.TotalMs,
+		TLSVersion:    result.TLSVersion,
+		CipherSuite:   result.CipherSuite,
 		Error:         result.Error,
 		CheckedAt:     time.Now(),
 	}
@@ -230,6 +251,14 @@ func (h *CertHandler) CheckNow(c *gin.Context) {
 		errors.ErrorResponse(c, errors.InternalServer("failed to save check result"))
 		return
 	}
+
+	// Update monitor timestamps
+	now := check.CheckedAt
+	nextCheck := now.Add(6 * time.Hour)
+	h.db.Model(&monitor).Updates(map[string]interface{}{
+		"last_checked_at": now,
+		"next_check_at":   nextCheck,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"data": toCheckResponse(&check)})
 }
@@ -242,8 +271,8 @@ func (h *CertHandler) GetHistory(c *gin.Context) {
 		return
 	}
 
-	limit := 50
-	if l, err := strconv.Atoi(c.DefaultQuery("limit", "50")); err == nil && l > 0 && l <= 200 {
+	limit := 10
+	if l, err := strconv.Atoi(c.DefaultQuery("limit", "10")); err == nil && l > 0 && l <= 100 {
 		limit = l
 	}
 
@@ -276,6 +305,14 @@ func toCheckResponse(check *domain.CertificateCheck) *checkResponse {
 		sans = []string{}
 	}
 
+	var chain []ChainCert
+	if check.Chain != "" {
+		_ = json.Unmarshal([]byte(check.Chain), &chain)
+	}
+	if chain == nil {
+		chain = []ChainCert{}
+	}
+
 	return &checkResponse{
 		ID:            check.ID,
 		Subject:       check.Subject,
@@ -285,7 +322,15 @@ func toCheckResponse(check *domain.CertificateCheck) *checkResponse {
 		DaysRemaining: check.DaysRemaining,
 		SANs:          sans,
 		ChainComplete: check.ChainComplete,
+		Chain:         chain,
 		Error:         check.Error,
+		ConnectedIP:   check.ConnectedIP,
+		SNI:           check.SNI,
+		DNSResolveMs:  check.DNSResolveMs,
+		HandshakeMs:   check.HandshakeMs,
+		TotalMs:       check.TotalMs,
+		TLSVersion:    check.TLSVersion,
+		CipherSuite:   check.CipherSuite,
 		CheckedAt:     check.CheckedAt,
 	}
 }

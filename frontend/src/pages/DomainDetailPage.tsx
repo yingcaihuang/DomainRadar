@@ -297,6 +297,55 @@ export function DomainDetailPage() {
                 dataSource={certMonitors?.data || []}
                 rowKey="id"
                 pagination={false}
+                expandable={{
+                  expandedRowRender: (record) => {
+                    const latest = record.latest;
+                    if (!latest) return <span style={{ color: '#9ca3af' }}>暂无检测数据</span>;
+                    return (
+                      <div style={{ padding: '12px 0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                          <Card size="small" title="连接详情" style={{ borderRadius: 10 }}>
+                            <Descriptions size="small" column={1}>
+                              <Descriptions.Item label="连接IP">{latest.connected_ip || '-'}</Descriptions.Item>
+                              <Descriptions.Item label="SNI主机头">{latest.sni || '-'}</Descriptions.Item>
+                              <Descriptions.Item label="DNS解析">{latest.dns_resolve_ms}ms</Descriptions.Item>
+                              <Descriptions.Item label="TLS握手">{latest.handshake_ms}ms</Descriptions.Item>
+                              <Descriptions.Item label="总耗时">{latest.total_ms}ms</Descriptions.Item>
+                              <Descriptions.Item label="TLS版本">{latest.tls_version || '-'}</Descriptions.Item>
+                              <Descriptions.Item label="加密套件">{latest.cipher_suite || '-'}</Descriptions.Item>
+                            </Descriptions>
+                          </Card>
+                          <Card size="small" title="证书链" style={{ borderRadius: 10 }}>
+                            {latest.chain?.length > 0 ? (
+                              <div>
+                                {latest.chain.map((cert: any, idx: number) => (
+                                  <div key={idx} style={{ padding: '8px 0', borderBottom: idx < latest.chain.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ background: cert.is_ca ? '#dbeafe' : '#dcfce7', color: cert.is_ca ? '#1d4ed8' : '#15803d', fontSize: 11, padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                        {cert.is_ca ? 'CA' : '叶子'}
+                                      </span>
+                                      <span style={{ fontWeight: 500 }}>{cert.subject || '(empty)'}</span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, paddingLeft: 48 }}>
+                                      颁发者: {cert.issuer} | 有效期: {cert.valid_from ? new Date(cert.valid_from).toLocaleDateString('zh-CN') : '-'} ~ {cert.valid_to ? new Date(cert.valid_to).toLocaleDateString('zh-CN') : '-'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : <span style={{ color: '#9ca3af' }}>无证书链数据</span>}
+                          </Card>
+                        </div>
+                        {latest.sans?.length > 0 && (
+                          <Card size="small" title="SAN (Subject Alternative Names)" style={{ borderRadius: 10 }}>
+                            <Space wrap>
+                              {latest.sans.map((san: string, idx: number) => <Tag key={idx} style={{ borderRadius: 6 }}>{san}</Tag>)}
+                            </Space>
+                          </Card>
+                        )}
+                      </div>
+                    );
+                  },
+                }}
                 columns={[
                   {
                     title: '端点',
@@ -341,6 +390,17 @@ export function DomainDetailPage() {
                         ? <Tag color="green">完整</Tag>
                         : <Tag color="red">不完整</Tag>;
                     },
+                  },
+                  {
+                    title: '检测时间',
+                    key: 'check_times',
+                    width: 180,
+                    render: (_: any, record: CertMonitor) => (
+                      <div style={{ fontSize: 12 }}>
+                        <div><span style={{ color: '#6b7280' }}>上次: </span>{record.last_checked_at ? new Date(record.last_checked_at).toLocaleString('zh-CN') : '从未'}</div>
+                        <div><span style={{ color: '#6b7280' }}>下次: </span>{record.next_check_at ? new Date(record.next_check_at).toLocaleString('zh-CN') : '-'}</div>
+                      </div>
+                    ),
                   },
                   {
                     title: '操作',

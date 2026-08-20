@@ -116,9 +116,11 @@ type CertificateMonitor struct {
 	DomainID  uint      `gorm:"index;not null" json:"domain_id"`
 	Endpoint  string    `gorm:"size:255;not null" json:"endpoint"` // e.g. "www.example.com:443"
 	Label     string    `gorm:"size:100" json:"label"`             // e.g. "主站", "API"
-	Enabled   bool      `gorm:"default:true" json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Enabled       bool       `gorm:"default:true" json:"enabled"`
+	LastCheckedAt *time.Time `json:"last_checked_at"`
+	NextCheckAt   *time.Time `json:"next_check_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 
 	// Relations
 	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
@@ -138,10 +140,18 @@ type CertificateCheck struct {
 	SerialNumber  string    `gorm:"size:100" json:"serial_number"`
 	DaysRemaining int       `json:"days_remaining"`
 	Error         string    `gorm:"type:text" json:"error"`
+	Chain         string    `gorm:"type:text" json:"chain"`        // JSON array of chain certs
+	ConnectedIP   string    `gorm:"size:50" json:"connected_ip"`
+	SNI           string    `gorm:"size:255" json:"sni"`
+	DNSResolveMs  int64     `json:"dns_resolve_ms"`
+	HandshakeMs   int64     `json:"handshake_ms"`
+	TotalMs       int64     `json:"total_ms"`
+	TLSVersion    string    `gorm:"size:20" json:"tls_version"`
+	CipherSuite   string    `gorm:"size:100" json:"cipher_suite"`
 	CheckedAt     time.Time `gorm:"not null" json:"checked_at"`
 
 	// Relations
-	Domain  NormalizedDomain  `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+	Domain  NormalizedDomain    `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
 	Monitor *CertificateMonitor `gorm:"foreignKey:MonitorID" json:"monitor,omitempty"`
 }
 
