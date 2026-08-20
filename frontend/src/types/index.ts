@@ -62,6 +62,10 @@ export interface DashboardData {
   active_alerts: number;
   overall_health_score: number;
   by_registrar: RegistrarGroup[];
+  cert_monitors: number;
+  cert_expiring: number;
+  email_monitors: number;
+  email_avg_score: number;
 }
 
 export interface RegistrarGroup {

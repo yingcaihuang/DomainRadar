@@ -15,6 +15,7 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/domain v1.3.66
 	go.uber.org/zap v1.28.0
 	golang.org/x/oauth2 v0.36.0
+	golang.org/x/time v0.15.0
 	gorm.io/driver/postgres v1.6.2
 	gorm.io/gorm v1.31.2
 	pgregory.net/rapid v1.3.0
@@ -72,7 +73,6 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

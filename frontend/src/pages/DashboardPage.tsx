@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, Col, Row, Spin } from 'antd';
-import { AlertOutlined, GlobalOutlined, WarningOutlined, HeartOutlined } from '@ant-design/icons';
+import { AlertOutlined, GlobalOutlined, WarningOutlined, HeartOutlined, SafetyCertificateOutlined, MailOutlined } from '@ant-design/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { dashboardApi } from '../services';
 import { StatsCard } from '../components/StatsCard';
@@ -60,7 +60,7 @@ export function DashboardPage() {
 
       {/* Stats Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={4}>
           <StatsCard
             icon={<GlobalOutlined />}
             label="域名总数"
@@ -68,7 +68,7 @@ export function DashboardPage() {
             color="indigo"
           />
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={4}>
           <StatsCard
             icon={<WarningOutlined />}
             label="30天内到期"
@@ -76,7 +76,7 @@ export function DashboardPage() {
             color="amber"
           />
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={4}>
           <StatsCard
             icon={<AlertOutlined />}
             label="活跃告警"
@@ -84,13 +84,31 @@ export function DashboardPage() {
             color="red"
           />
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={4}>
           <StatsCard
             icon={<HeartOutlined />}
             label="健康评分"
             value={data?.overall_health_score || 0}
             color="emerald"
             suffix="/ 100"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={4}>
+          <StatsCard
+            icon={<SafetyCertificateOutlined />}
+            label="证书监控"
+            value={`${data?.cert_monitors || 0}`}
+            color="sky"
+            suffix={data?.cert_expiring ? `(${data.cert_expiring}即将到期)` : undefined}
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={4}>
+          <StatsCard
+            icon={<MailOutlined />}
+            label="邮件监控"
+            value={`${data?.email_monitors || 0}`}
+            color="violet"
+            suffix={data?.email_avg_score ? `均分${data.email_avg_score}` : undefined}
           />
         </Col>
       </Row>

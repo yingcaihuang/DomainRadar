@@ -20,6 +20,7 @@ import (
 	"domainradar/internal/dashboard"
 	"domainradar/internal/domain"
 	"domainradar/internal/domainmgmt"
+	"domainradar/internal/emailcheck"
 	"domainradar/internal/monitor"
 	"domainradar/internal/notification"
 	"domainradar/internal/sync"
@@ -101,11 +102,15 @@ func main() {
 	channelRegistry := notification.NewChannelRegistry()
 	notificationHandler := notification.NewNotificationHandler(db, cryptoService, channelRegistry, auditService, logger)
 
-	// Rules handler
+	// Rules handlers
 	rulesHandler := config.NewRulesHandler(db, logger)
+	emailRulesHandler := config.NewEmailRulesHandler(db)
 
 	// Certificate monitoring handler
 	certHandler := certcheck.NewCertHandler(db, logger)
+
+	// Email monitoring handler
+	emailHandler := emailcheck.NewEmailHandler(db, logger)
 
 	// Start alert scheduler (health score updates + expiration alerts)
 	alertScheduler := alert.NewAlertScheduler(db, logger)
@@ -114,6 +119,10 @@ func main() {
 	// Start certificate scheduler (periodic TLS checks)
 	certScheduler := certcheck.NewCertScheduler(db, logger, 0)
 	certScheduler.Start(context.Background())
+
+	// Start email monitoring scheduler (periodic email DNS checks)
+	emailScheduler := emailcheck.NewEmailScheduler(db, logger, 0)
+	emailScheduler.Start(context.Background())
 
 	// Initialize router
 	router := setupRouter(
@@ -128,6 +137,8 @@ func main() {
 		notificationHandler,
 		rulesHandler,
 		certHandler,
+		emailHandler,
+		emailRulesHandler,
 	)
 
 	// Get port from environment or default to 8080
@@ -154,6 +165,8 @@ func setupRouter(
 	notificationHandler *notification.NotificationHandler,
 	rulesHandler *config.RulesHandler,
 	certHandler *certcheck.CertHandler,
+	emailHandler *emailcheck.EmailHandler,
+	emailRulesHandler *config.EmailRulesHandler,
 ) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -169,38 +182,66 @@ func setupRouter(
 		})
 
 		// Auth routes (no auth required)
-		authHandler.RegisterRoutes(v1)
+		if authHandler != nil {
+			authHandler.RegisterRoutes(v1)
+		}
 
 		// Protected routes — require authentication
 		protected := v1.Group("")
-		protected.Use(auth.AuthMiddleware(sm))
+		if sm != nil {
+			protected.Use(auth.AuthMiddleware(sm))
+		}
 		{
 			// Dashboard and reports (includes /audit-logs)
-			dashboardHandler.RegisterRoutes(protected)
+			if dashboardHandler != nil {
+				dashboardHandler.RegisterRoutes(protected)
+			}
 
 			// Domains, Tags, Groups
-			domainHandler.RegisterRoutes(protected)
+			if domainHandler != nil {
+				domainHandler.RegisterRoutes(protected)
+			}
 
 			// Alerts
-			alertHandler.RegisterRoutes(protected)
+			if alertHandler != nil {
+				alertHandler.RegisterRoutes(protected)
+			}
 
 			// Monitoring
-			monitorHandler.RegisterRoutes(protected)
+			if monitorHandler != nil {
+				monitorHandler.RegisterRoutes(protected)
+			}
 
 			// Registrars
-			registrarHandler.RegisterRoutes(protected)
+			if registrarHandler != nil {
+				registrarHandler.RegisterRoutes(protected)
+			}
 
 			// Notifications
-			notificationHandler.RegisterRoutes(protected)
+			if notificationHandler != nil {
+				notificationHandler.RegisterRoutes(protected)
+			}
 
 			// User management
-			userHandler.RegisterRoutes(protected)
+			if userHandler != nil {
+				userHandler.RegisterRoutes(protected)
+			}
 
 			// Configuration
-			rulesHandler.RegisterRoutes(protected)
+			if rulesHandler != nil {
+				rulesHandler.RegisterRoutes(protected)
+			emailRulesHandler.RegisterRoutes(protected)
+			}
 
 			// Certificate monitoring
-			certHandler.RegisterRoutes(protected)
+			if certHandler != nil {
+				certHandler.RegisterRoutes(protected)
+			}
+
+			// Email monitoring
+			if emailHandler != nil {
+				emailHandler.RegisterRoutes(protected)
+			}
 		}
 	}
 

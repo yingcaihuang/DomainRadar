@@ -45,6 +45,10 @@ type DashboardResponse struct {
 	ActiveAlerts     int64               `json:"active_alerts"`
 	OverallHealth    float64             `json:"overall_health_score"`
 	ByRegistrar      []RegistrarGroup    `json:"by_registrar"`
+	CertMonitors     int64               `json:"cert_monitors"`
+	CertExpiring     int64               `json:"cert_expiring"`
+	EmailMonitors    int64               `json:"email_monitors"`
+	EmailAvgScore    float64             `json:"email_avg_score"`
 }
 
 // RegistrarGroup shows domains grouped by registrar.
@@ -115,12 +119,33 @@ func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 		Order("domain_count DESC").
 		Scan(&registrarGroups)
 
+	// Certificate monitoring stats.
+	var certMonitors int64
+	h.db.WithContext(ctx).Model(&domain.CertificateMonitor{}).Where("enabled = ?", true).Count(&certMonitors)
+	var certExpiring int64
+	h.db.WithContext(ctx).Model(&domain.CertificateCheck{}).
+		Where("days_remaining <= 30 AND days_remaining >= 0 AND error = ''").
+		Select("COUNT(DISTINCT monitor_id)").
+		Row().Scan(&certExpiring)
+
+	// Email monitoring stats.
+	var emailMonitors int64
+	h.db.WithContext(ctx).Model(&domain.EmailMonitor{}).Where("enabled = ?", true).Count(&emailMonitors)
+	var emailAvgScore float64
+	h.db.WithContext(ctx).Raw(`SELECT COALESCE(AVG(total_score), 0) FROM (
+		SELECT DISTINCT ON (monitor_id) total_score FROM email_check_results ORDER BY monitor_id, checked_at DESC
+	) sub`).Row().Scan(&emailAvgScore)
+
 	c.JSON(http.StatusOK, DashboardResponse{
 		TotalDomains:     totalDomains,
 		ExpiringWithin30: expiringWithin30,
 		ActiveAlerts:     activeAlerts,
 		OverallHealth:    float64(int(avgHealth*100)) / 100,
 		ByRegistrar:      registrarGroups,
+		CertMonitors:     certMonitors,
+		CertExpiring:     certExpiring,
+		EmailMonitors:    emailMonitors,
+		EmailAvgScore:    float64(int(emailAvgScore*10)) / 10,
 	})
 }
 

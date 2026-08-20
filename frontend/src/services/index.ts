@@ -182,6 +182,15 @@ export const certApi = {
   history: (monitorId: number) => request<{ data: CertCheckResult[] }>(`/certificates/${monitorId}/history`),
 };
 
+// Email Monitoring
+export const emailMonitorApi = {
+  get: (domainId: number) => request<{ data: EmailMonitorData }>(`/domains/${domainId}/email-monitor`),
+  configure: (domainId: number, data: { dkim_selectors: string; mail_server_ips: string }) =>
+    request<{ data: EmailMonitorData }>(`/domains/${domainId}/email-monitor`, { method: 'POST', body: JSON.stringify(data) }),
+  check: (domainId: number) => request<{ data: EmailCheckResultData }>(`/domains/${domainId}/email-monitor/check`, { method: 'POST' }),
+  history: (domainId: number) => request<{ data: EmailCheckResultData[] }>(`/domains/${domainId}/email-monitor/history`),
+};
+
 // Certificate monitoring types (inline for service use)
 export interface CertMonitor {
   id: number;
@@ -215,3 +224,57 @@ export interface CertCheckResult {
   cipher_suite: string;
   checked_at: string;
 }
+
+// Email monitoring types
+export interface EmailCheckDetail {
+  score: number;
+  max_score: number;
+  findings: string[];
+}
+
+export interface EmailCheckDetails {
+  mx: EmailCheckDetail;
+  spf: EmailCheckDetail;
+  dkim: EmailCheckDetail;
+  dmarc: EmailCheckDetail;
+  ptr: EmailCheckDetail;
+  mta_sts: EmailCheckDetail;
+  tlsrpt: EmailCheckDetail;
+  bimi: EmailCheckDetail;
+}
+
+export interface EmailCheckResultData {
+  id: number;
+  total_score: number;
+  grade: string;
+  mx_score: number;
+  spf_score: number;
+  dkim_score: number;
+  dmarc_score: number;
+  ptr_score: number;
+  mta_sts_score: number;
+  tlsrpt_score: number;
+  bimi_score: number;
+  details?: EmailCheckDetails;
+  checked_at: string;
+}
+
+export interface EmailMonitorData {
+  id: number;
+  domain_id: number;
+  enabled: boolean;
+  dkim_selectors: string;
+  mail_server_ips: string;
+  last_checked_at: string | null;
+  next_check_at: string | null;
+  latest_result?: EmailCheckResultData;
+}
+
+// Email Alert Rules Configuration
+export const emailRulesApi = {
+  list: () => request<{ data: any[] }>('/config/email-alert-rules'),
+  create: (data: any) => request('/config/email-alert-rules', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: number, data: any) => request(`/config/email-alert-rules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: number) => request(`/config/email-alert-rules/${id}`, { method: 'DELETE' }),
+  resetDefaults: () => request('/config/email-alert-rules/reset-defaults', { method: 'POST' }),
+};

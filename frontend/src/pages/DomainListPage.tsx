@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, SafetyCertificateOutlined, MailOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
 
@@ -140,6 +140,21 @@ export function DomainListPage() {
         <Space size={2} wrap>
           {tags?.slice(0, 3).map(t => <Tag key={t.id} style={{ borderRadius: 6 }}>{t.name}</Tag>)}
           {tags?.length > 3 && <Tag style={{ borderRadius: 6 }}>+{tags.length - 3}</Tag>}
+        </Space>
+      ),
+    },
+    {
+      title: '监控',
+      key: 'monitors',
+      width: 100,
+      render: (_: any, record: Domain) => (
+        <Space size={4}>
+          <span title="证书监控" style={{ color: (record as any).cert_monitor_enabled ? '#10b981' : '#d1d5db', fontSize: 16 }}>
+            <SafetyCertificateOutlined />
+          </span>
+          <span title="邮件监控" style={{ color: (record as any).email_monitor_enabled ? '#10b981' : '#d1d5db', fontSize: 16 }}>
+            <MailOutlined />
+          </span>
         </Space>
       ),
     },

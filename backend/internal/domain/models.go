@@ -338,6 +338,57 @@ type ExpirationRule struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// EmailMonitor stores email monitoring config per domain.
+type EmailMonitor struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	DomainID      uint       `gorm:"uniqueIndex;not null" json:"domain_id"`
+	Enabled       bool       `gorm:"default:true" json:"enabled"`
+	DKIMSelectors string     `gorm:"size:500" json:"dkim_selectors"`  // comma-separated: "google,selector1,default"
+	MailServerIPs string     `gorm:"size:500" json:"mail_server_ips"` // comma-separated IPs for PTR check
+	LastCheckedAt *time.Time `json:"last_checked_at"`
+	NextCheckAt   *time.Time `json:"next_check_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+
+	// Relations
+	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+}
+
+// EmailCheckResult stores the result of an email DNS check.
+type EmailCheckResult struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	DomainID    uint      `gorm:"index;not null" json:"domain_id"`
+	MonitorID   uint      `gorm:"index;not null" json:"monitor_id"`
+	TotalScore  int       `json:"total_score"`                // 0-100
+	Grade       string    `gorm:"size:5" json:"grade"`        // A, B, C, D
+	MXScore     int       `json:"mx_score"`
+	SPFScore    int       `json:"spf_score"`
+	DKIMScore   int       `json:"dkim_score"`
+	DMARCScore  int       `json:"dmarc_score"`
+	PTRScore    int       `json:"ptr_score"`
+	MTASTSScore int       `json:"mta_sts_score"`
+	TLSRPTScore int       `json:"tlsrpt_score"`
+	BIMIScore   int       `json:"bimi_score"`
+	Details     string    `gorm:"type:text" json:"details"` // JSON with detailed findings per check
+	CheckedAt   time.Time `gorm:"not null" json:"checked_at"`
+
+	// Relations
+	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+}
+
+
+// EmailAlertRule defines configurable alert rules for email security monitoring.
+type EmailAlertRule struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	RuleType    string    `gorm:"size:30;not null" json:"rule_type"`    // "total_score", "score_drop", "mx_score", "spf_score", "dkim_score", "dmarc_score"
+	Threshold   int       `gorm:"not null" json:"threshold"`           // Score threshold (e.g. 50 for total, 0 for single item)
+	Severity    string    `gorm:"size:20;not null" json:"severity"`    // "critical", "warning", "info"
+	Enabled     bool      `gorm:"default:true" json:"enabled"`
+	Description string    `gorm:"size:200" json:"description"`         // Human readable description
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // AllModels returns all GORM model types for use in auto-migration.
 func AllModels() []interface{} {
 	return []interface{}{
@@ -350,6 +401,8 @@ func AllModels() []interface{} {
 		&CertificateMonitor{},
 		&CertificateCheck{},
 		&EmailCheck{},
+		&EmailMonitor{},
+		&EmailCheckResult{},
 		&Alert{},
 		&NotificationChannel{},
 		&NotificationRule{},
@@ -359,6 +412,7 @@ func AllModels() []interface{} {
 		&AuditLog{},
 		&SyncLog{},
 		&ExpirationRule{},
+		&EmailAlertRule{},
 	}
 }
 

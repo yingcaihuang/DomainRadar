@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, message, Popconfirm } from 'antd';
-import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined, PlusOutlined, SyncOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, message, Popconfirm, Collapse } from 'antd';
+import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined, PlusOutlined, SyncOutlined, DeleteOutlined, MailOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { domainApi, monitorApi, certApi } from '../services';
-import type { CertMonitor } from '../services';
+import { domainApi, monitorApi, certApi, emailMonitorApi } from '../services';
+import type { CertMonitor, EmailMonitorData, EmailCheckResultData, EmailCheckDetails } from '../services';
 import { useState } from 'react';
 
 // Format date to Chinese format
@@ -30,6 +30,256 @@ function daysUntil(dateStr: string | null | undefined): string {
   if (days < 0) return `已过期 ${Math.abs(days)} 天`;
   if (days === 0) return '今天到期';
   return `${days} 天后到期`;
+}
+
+// Grade color helper
+function gradeColor(grade: string): string {
+  switch (grade) {
+    case 'A': return '#52c41a';
+    case 'B': return '#faad14';
+    case 'C': return '#fa8c16';
+    case 'D': return '#f5222d';
+    default: return '#d9d9d9';
+  }
+}
+
+// Score bar color
+function scoreBarColor(score: number, max: number): string {
+  const pct = max > 0 ? score / max : 0;
+  if (pct >= 0.8) return '#52c41a';
+  if (pct >= 0.5) return '#faad14';
+  return '#f5222d';
+}
+
+// Category labels for display
+const emailCategories = [
+  { key: 'mx', label: 'MX 记录', maxScore: 30 },
+  { key: 'spf', label: 'SPF 记录', maxScore: 20 },
+  { key: 'dkim', label: 'DKIM 记录', maxScore: 20 },
+  { key: 'dmarc', label: 'DMARC 记录', maxScore: 15 },
+  { key: 'ptr', label: 'PTR 记录', maxScore: 5 },
+  { key: 'mta_sts', label: 'MTA-STS', maxScore: 5 },
+  { key: 'tlsrpt', label: 'TLSRPT', maxScore: 3 },
+  { key: 'bimi', label: 'BIMI', maxScore: 2 },
+] as const;
+
+interface EmailSecurityTabProps {
+  domainId: number;
+  emailMonitorData?: EmailMonitorData;
+  emailMonitorLoading: boolean;
+  emailHistoryData?: EmailCheckResultData[];
+  emailConfigForm: any;
+  emailConfigMutation: any;
+  emailCheckMutation: any;
+}
+
+function EmailSecurityTab({ emailMonitorData, emailMonitorLoading, emailHistoryData, emailConfigForm, emailConfigMutation, emailCheckMutation }: EmailSecurityTabProps) {
+  const result = emailMonitorData?.latest_result;
+
+  return (
+    <Row gutter={[16, 16]}>
+      {/* Score Overview Card */}
+      <Col span={24}>
+        <Card
+          style={{ borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}
+          styles={{ body: { padding: 0 } }}
+        >
+          <div style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)', padding: '24px 32px', color: '#fff' }}>
+            <Space align="center" size={16}>
+              <MailOutlined style={{ fontSize: 28 }} />
+              <span style={{ fontSize: 20, fontWeight: 600 }}>邮件安全评分</span>
+            </Space>
+            {result && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginTop: 16 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 48, fontWeight: 700, lineHeight: 1 }}>{result.total_score}</div>
+                  <div style={{ opacity: 0.8, marginTop: 4 }}>/100</div>
+                </div>
+                <Tag
+                  style={{ fontSize: 24, fontWeight: 700, padding: '4px 16px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                >
+                  等级: {result.grade}
+                </Tag>
+              </div>
+            )}
+            {!result && !emailMonitorLoading && (
+              <div style={{ marginTop: 16, opacity: 0.8 }}>尚未进行检测，请点击"立即检测"开始</div>
+            )}
+          </div>
+
+          {/* Score Bars */}
+          {result && result.details && (
+            <div style={{ padding: '24px 32px' }}>
+              {emailCategories.map(cat => {
+                const detail = result.details![cat.key as keyof EmailCheckDetails];
+                const score = detail?.score ?? 0;
+                const max = cat.maxScore;
+                const pct = max > 0 ? (score / max) * 100 : 0;
+                return (
+                  <div key={cat.key} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 500, color: '#374151' }}>{cat.label}</span>
+                      <span style={{ color: '#6b7280', fontFamily: 'monospace' }}>{score}/{max}</span>
+                    </div>
+                    <Progress
+                      percent={pct}
+                      showInfo={false}
+                      strokeColor={scoreBarColor(score, max)}
+                      trailColor="#f3f4f6"
+                      size="small"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </Col>
+
+      {/* Detailed Findings */}
+      {result && result.details && (
+        <Col span={24}>
+          <Card title="详细检测结果" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+            <Collapse
+              items={emailCategories.map(cat => {
+                const detail = result.details![cat.key as keyof EmailCheckDetails];
+                const score = detail?.score ?? 0;
+                const max = cat.maxScore;
+                const findings = detail?.findings ?? [];
+                return {
+                  key: cat.key,
+                  label: (
+                    <Space>
+                      <span style={{ fontWeight: 500 }}>{cat.label}</span>
+                      <Tag color={score === max ? 'green' : score > 0 ? 'orange' : 'red'} style={{ borderRadius: 6 }}>
+                        {score}/{max}
+                      </Tag>
+                    </Space>
+                  ),
+                  children: (
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {findings.length > 0 ? findings.map((f: string, i: number) => (
+                        <li key={i} style={{ marginBottom: 4, color: '#4b5563' }}>{f}</li>
+                      )) : <li style={{ color: '#9ca3af' }}>无详细信息</li>}
+                    </ul>
+                  ),
+                };
+              })}
+            />
+          </Card>
+        </Col>
+      )}
+
+      {/* Actions & Config */}
+      <Col xs={24} lg={12}>
+        <Card
+          title="检测操作"
+          style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}
+          extra={
+            <Button
+              type="primary"
+              icon={<SyncOutlined />}
+              loading={emailCheckMutation.isPending}
+              onClick={() => emailCheckMutation.mutate()}
+            >
+              立即检测
+            </Button>
+          }
+        >
+          <Descriptions column={1} size="small">
+            <Descriptions.Item label="上次检测">
+              {emailMonitorData?.last_checked_at
+                ? new Date(emailMonitorData.last_checked_at).toLocaleString('zh-CN')
+                : '从未'}
+            </Descriptions.Item>
+            <Descriptions.Item label="下次检测">
+              {emailMonitorData?.next_check_at
+                ? new Date(emailMonitorData.next_check_at).toLocaleString('zh-CN')
+                : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="监控状态">
+              {emailMonitorData?.enabled
+                ? <Tag color="green">已启用</Tag>
+                : <Tag>未启用</Tag>}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </Col>
+
+      <Col xs={24} lg={12}>
+        <Card title="检测配置" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+          <Form
+            form={emailConfigForm}
+            layout="vertical"
+            initialValues={{
+              dkim_selectors: emailMonitorData?.dkim_selectors || 'google,default,selector1,selector2,k1,s1,dkim',
+              mail_server_ips: emailMonitorData?.mail_server_ips || '',
+            }}
+            onFinish={(values: { dkim_selectors: string; mail_server_ips: string }) => emailConfigMutation.mutate(values)}
+          >
+            <Form.Item
+              label="DKIM 选择器"
+              name="dkim_selectors"
+              tooltip="逗号分隔，例如: google,default,selector1"
+            >
+              <Input placeholder="google,default,selector1,selector2,k1,s1,dkim" />
+            </Form.Item>
+            <Form.Item
+              label="邮件服务器 IP"
+              name="mail_server_ips"
+              tooltip="逗号分隔，用于 PTR 反向解析检查"
+            >
+              <Input placeholder="如: 1.2.3.4,5.6.7.8" />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={emailConfigMutation.isPending}>
+                保存配置
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Col>
+
+      {/* History */}
+      {emailHistoryData && emailHistoryData.length > 0 && (
+        <Col span={24}>
+          <Card title="历史检测记录" style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
+            <Table
+              dataSource={emailHistoryData}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              columns={[
+                {
+                  title: '检测时间',
+                  dataIndex: 'checked_at',
+                  render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+                },
+                {
+                  title: '总分',
+                  dataIndex: 'total_score',
+                  render: (v: number) => <span style={{ fontWeight: 600 }}>{v}/100</span>,
+                },
+                {
+                  title: '等级',
+                  dataIndex: 'grade',
+                  render: (v: string) => <Tag color={gradeColor(v)} style={{ borderRadius: 6, fontWeight: 600 }}>{v}</Tag>,
+                },
+                { title: 'MX', dataIndex: 'mx_score', render: (v: number) => `${v}/30` },
+                { title: 'SPF', dataIndex: 'spf_score', render: (v: number) => `${v}/20` },
+                { title: 'DKIM', dataIndex: 'dkim_score', render: (v: number) => `${v}/20` },
+                { title: 'DMARC', dataIndex: 'dmarc_score', render: (v: number) => `${v}/15` },
+                { title: 'PTR', dataIndex: 'ptr_score', render: (v: number) => `${v}/5` },
+                { title: 'MTA-STS', dataIndex: 'mta_sts_score', render: (v: number) => `${v}/5` },
+                { title: 'TLSRPT', dataIndex: 'tlsrpt_score', render: (v: number) => `${v}/3` },
+                { title: 'BIMI', dataIndex: 'bimi_score', render: (v: number) => `${v}/2` },
+              ]}
+            />
+          </Card>
+        </Col>
+      )}
+    </Row>
+  );
 }
 
 export function DomainDetailPage() {
@@ -75,6 +325,40 @@ export function DomainDetailPage() {
     queryKey: ['cert-monitors', domainId],
     queryFn: () => certApi.listMonitors(domainId),
     enabled: !!domainId,
+  });
+
+  // Email monitoring queries
+  const { data: emailMonitorData, isLoading: emailMonitorLoading } = useQuery({
+    queryKey: ['email-monitor', domainId],
+    queryFn: () => emailMonitorApi.get(domainId),
+    enabled: !!domainId,
+  });
+
+  const { data: emailHistoryData } = useQuery({
+    queryKey: ['email-monitor-history', domainId],
+    queryFn: () => emailMonitorApi.history(domainId),
+    enabled: !!domainId,
+  });
+
+  const [emailConfigForm] = Form.useForm();
+
+  const emailConfigMutation = useMutation({
+    mutationFn: (data: { dkim_selectors: string; mail_server_ips: string }) => emailMonitorApi.configure(domainId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-monitor', domainId] });
+      message.success('配置已保存');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const emailCheckMutation = useMutation({
+    mutationFn: () => emailMonitorApi.check(domainId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-monitor', domainId] });
+      queryClient.invalidateQueries({ queryKey: ['email-monitor-history', domainId] });
+      message.success('检测完成');
+    },
+    onError: (err: Error) => message.error(err.message),
   });
 
   const addMonitorMutation = useMutation({
@@ -465,6 +749,19 @@ export function DomainDetailPage() {
           </Modal>
         </Row>
       ),
+    },
+    {
+      key: 'email-security',
+      label: '邮件安全',
+      children: <EmailSecurityTab
+        domainId={domainId}
+        emailMonitorData={emailMonitorData?.data}
+        emailMonitorLoading={emailMonitorLoading}
+        emailHistoryData={emailHistoryData?.data}
+        emailConfigForm={emailConfigForm}
+        emailConfigMutation={emailConfigMutation}
+        emailCheckMutation={emailCheckMutation}
+      />,
     },
   ];
 

@@ -131,6 +131,8 @@ type DomainResponse struct {
 	ResponseTimeThresholdMs int             `json:"response_time_threshold_ms"`
 	Tags                    []TagResponse   `json:"tags"`
 	Group                   *GroupResponse  `json:"group,omitempty"`
+	CertMonitorEnabled      bool            `json:"cert_monitor_enabled"`
+	EmailMonitorEnabled     bool            `json:"email_monitor_enabled"`
 	CreatedAt               time.Time       `json:"created_at"`
 	UpdatedAt               time.Time       `json:"updated_at"`
 }
@@ -320,9 +322,32 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		return
 	}
 
+	// Batch lookup monitor status for these domains
+	domainIDs := make([]uint, 0, len(domains))
+	for _, d := range domains {
+		domainIDs = append(domainIDs, d.ID)
+	}
+	certMonitorMap := make(map[uint]bool)
+	emailMonitorMap := make(map[uint]bool)
+	if len(domainIDs) > 0 {
+		var certMonitorIDs []uint
+		h.db.Model(&domain.CertificateMonitor{}).Where("domain_id IN ? AND enabled = ?", domainIDs, true).Pluck("domain_id", &certMonitorIDs)
+		for _, id := range certMonitorIDs {
+			certMonitorMap[id] = true
+		}
+		var emailMonitorIDs []uint
+		h.db.Model(&domain.EmailMonitor{}).Where("domain_id IN ? AND enabled = ?", domainIDs, true).Pluck("domain_id", &emailMonitorIDs)
+		for _, id := range emailMonitorIDs {
+			emailMonitorMap[id] = true
+		}
+	}
+
 	responses := make([]DomainResponse, 0, len(domains))
 	for _, d := range domains {
-		responses = append(responses, toDomainResponse(d))
+		resp := toDomainResponse(d)
+		resp.CertMonitorEnabled = certMonitorMap[d.ID]
+		resp.EmailMonitorEnabled = emailMonitorMap[d.ID]
+		responses = append(responses, resp)
 	}
 
 	c.JSON(http.StatusOK, DomainListResponse{
