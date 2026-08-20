@@ -65,6 +65,8 @@ services:
       target: production
     container_name: domainradar-backend
     environment:
+      NO_PROXY: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
+      no_proxy: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
       GIN_MODE: release
       PORT: "8080"
       AUTO_MIGRATE: "true"

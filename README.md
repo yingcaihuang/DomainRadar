@@ -169,6 +169,32 @@ cat backup.sql | docker exec -i domainradar-postgresql psql -U domainradar domai
 5. 设置通知 — 设置 > 通知渠道，添加钉钉/企业微信 Webhook
 6. SSO（可选） — 设置 > SSO 配置，配置 OIDC 提供商
 
+## 故障排查
+
+### API 请求返回 308 重定向
+
+现象：前端页面能正常打开，但所有 `/api/*` 请求返回 `308 Permanent Redirect`，`Location` 与请求 URL 完全相同。
+
+原因：宿主机的 `~/.docker/config.json` 配置了 `proxies`，Docker 会向每个新建容器注入 `HTTP_PROXY` 环境变量。Caddy 2.7+ 的 `reverse_proxy` 默认读取该变量，导致回源 `backend:8080` 的请求被发往转发代理，而 Caddy 默认保留原始 `Host` 头，转发代理据此做强制 HTTPS 跳转。
+
+排查：
+
+```bash
+# 确认容器是否被注入代理变量
+docker exec domainradar-caddy env | grep -i proxy
+
+# 查看 Caddy 实际生成的路由树，确认配置本身没问题
+docker exec domainradar-caddy caddy adapt --config /etc/caddy/Caddyfile
+```
+
+修复：compose 文件已为 backend 和 caddy 设置 `NO_PROXY`，排除内网服务名。外网访问（ACME 签证书、注册商 API、WHOIS 查询）仍走代理。
+
+### API 请求返回前端 HTML 或 405
+
+原因：Caddyfile 指令顺序问题。Caddy 有固定的指令执行顺序，`try_files` 排在 `reverse_proxy` 之前，会先把 `/api/xxx` 重写成 `/index.html`，导致 `reverse_proxy` 的路径匹配器失效。
+
+修复：使用两个互斥的 `handle` 块，而不是在同一层级混用 `reverse_proxy` 和 `try_files`。当前 Caddyfile 已采用此结构。
+
 ## License
 
 MIT

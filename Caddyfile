@@ -1,8 +1,14 @@
 {$SITE_DOMAIN::80} {
-    @api path /api/*
-    reverse_proxy @api backend:8080
+	# API 反向代理 — handle 块互斥，按书写顺序求值，
+	# 避免 try_files 在 reverse_proxy 之前重写路径
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
 
-    root * /srv/frontend
-    try_files {path} /index.html
-    file_server
+	# 前端 SPA
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
 }
