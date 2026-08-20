@@ -203,6 +203,8 @@ func setupRouter(
 	emailRulesHandler *config.EmailRulesHandler,
 ) *gin.Engine {
 	router := gin.New()
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
 	router.Use(gin.Recovery())
 
 	// API v1 routes
