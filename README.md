@@ -117,6 +117,27 @@ Caddyfile 使用环境变量 {$SITE_DOMAIN::80}:
 - 设为域名时 Caddy 自动启用 HTTPS + Let's Encrypt 证书自动续期
 - 支持 HTTP/2 + HTTP/3 (QUIC)
 
+### 使用预构建镜像部署（推荐）
+
+无需克隆源码，直接使用 GitHub Container Registry 的预构建镜像：
+
+```bash
+# 下载部署文件
+curl -O https://raw.githubusercontent.com/yingcaihuang/DomainRadar/main/docker-compose.ghcr.yml
+curl -O https://raw.githubusercontent.com/yingcaihuang/DomainRadar/main/.env.production
+
+# 配置环境
+cp .env.production .env
+vi .env  # 设置 SITE_DOMAIN 和密码
+
+# 启动
+docker compose -f docker-compose.ghcr.yml --env-file .env up -d
+```
+
+镜像地址：
+- `ghcr.io/yingcaihuang/domainradar-backend:latest`
+- `ghcr.io/yingcaihuang/domainradar-caddy:latest`
+
 ### 常用命令
 
 ```bash
