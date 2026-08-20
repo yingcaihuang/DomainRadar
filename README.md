@@ -45,7 +45,15 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up --build 
 open http://localhost
 ```
 
-默认管理员账号: admin / admin123（首次登录需修改密码）
+默认管理员账号:
+
+| 字段 | 值 |
+|------|-----|
+| 用户名 | admin |
+| 密码 | admin123 |
+| 角色 | 管理员 |
+
+> 首次登录后会强制要求修改密码。仅在数据库中无任何用户时自动创建。
 
 ### 生产部署
 
