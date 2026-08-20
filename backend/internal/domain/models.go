@@ -110,21 +110,39 @@ type HealthCheck struct {
 	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
 }
 
+// CertificateMonitor tracks endpoints to monitor for SSL/TLS certificates.
+type CertificateMonitor struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	DomainID  uint      `gorm:"index;not null" json:"domain_id"`
+	Endpoint  string    `gorm:"size:255;not null" json:"endpoint"` // e.g. "www.example.com:443"
+	Label     string    `gorm:"size:100" json:"label"`             // e.g. "主站", "API"
+	Enabled   bool      `gorm:"default:true" json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// Relations
+	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+}
+
 // CertificateCheck records SSL/TLS certificate inspection results.
 type CertificateCheck struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	DomainID      uint      `gorm:"index;not null" json:"domain_id"`
+	MonitorID     uint      `gorm:"index" json:"monitor_id"`
 	Issuer        string    `gorm:"size:255" json:"issuer"`
 	Subject       string    `gorm:"size:255" json:"subject"`
 	ValidFrom     time.Time `json:"valid_from"`
 	ValidTo       time.Time `json:"valid_to"`
 	ChainComplete bool      `json:"chain_complete"`
+	SANs          string    `gorm:"type:text" json:"sans"`
 	SerialNumber  string    `gorm:"size:100" json:"serial_number"`
 	DaysRemaining int       `json:"days_remaining"`
+	Error         string    `gorm:"type:text" json:"error"`
 	CheckedAt     time.Time `gorm:"not null" json:"checked_at"`
 
 	// Relations
-	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+	Domain  NormalizedDomain  `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+	Monitor *CertificateMonitor `gorm:"foreignKey:MonitorID" json:"monitor,omitempty"`
 }
 
 // EmailCheck records email service compliance check results.
@@ -319,6 +337,7 @@ func AllModels() []interface{} {
 		&Group{},
 		&Tag{},
 		&HealthCheck{},
+		&CertificateMonitor{},
 		&CertificateCheck{},
 		&EmailCheck{},
 		&Alert{},

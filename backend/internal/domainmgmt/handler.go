@@ -1111,23 +1111,29 @@ func (h *DomainHandler) GetCalendar(c *gin.Context) {
 		})
 	}
 
-	// Get certificate expirations in range.
+	// Get certificate expirations in range (from certificate monitors).
 	var certs []struct {
 		DomainID   uint      `json:"domain_id"`
 		DomainName string    `json:"domain_name"`
+		Endpoint   string    `json:"endpoint"`
 		ValidTo    time.Time `json:"valid_to"`
 	}
-	h.db.Raw(`SELECT DISTINCT ON (cc.domain_id) cc.domain_id, d.domain_name, cc.valid_to
+	h.db.Raw(`SELECT DISTINCT ON (cc.domain_id, cc.monitor_id) cc.domain_id, d.domain_name, COALESCE(cm.endpoint, '') as endpoint, cc.valid_to
 		FROM certificate_checks cc
 		JOIN domains d ON d.id = cc.domain_id
+		LEFT JOIN certificate_monitors cm ON cm.id = cc.monitor_id
 		WHERE cc.valid_to >= ? AND cc.valid_to < ?
-		ORDER BY cc.domain_id, cc.checked_at DESC`, startDate, endDate).Scan(&certs)
+		ORDER BY cc.domain_id, cc.monitor_id, cc.checked_at DESC`, startDate, endDate).Scan(&certs)
 
 	for _, cert := range certs {
 		daysRemaining := int(cert.ValidTo.Sub(now).Hours() / 24)
+		domainLabel := cert.DomainName
+		if cert.Endpoint != "" {
+			domainLabel = cert.DomainName + " (" + cert.Endpoint + ")"
+		}
 		entries = append(entries, CalendarEntry{
 			ID:             cert.DomainID,
-			DomainName:     cert.DomainName,
+			DomainName:     domainLabel,
 			ExpirationDate: cert.ValidTo.Format("2006-01-02"),
 			Type:           "certificate",
 			Severity:       calcSeverity(daysRemaining),

@@ -171,3 +171,37 @@ export const rulesApi = {
   delete: (id: number) => request(`/config/expiration-rules/${id}`, { method: 'DELETE' }),
   resetDefaults: () => request('/config/expiration-rules/reset-defaults', { method: 'POST' }),
 };
+
+// Certificate Monitoring
+export const certApi = {
+  listMonitors: (domainId: number) => request<{ data: CertMonitor[] }>(`/domains/${domainId}/certificates`),
+  addMonitor: (domainId: number, data: { endpoint: string; label: string }) =>
+    request<{ data: CertMonitor }>(`/domains/${domainId}/certificates`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteMonitor: (monitorId: number) => request(`/certificates/${monitorId}`, { method: 'DELETE' }),
+  checkNow: (monitorId: number) => request<{ data: CertCheckResult }>(`/certificates/${monitorId}/check`, { method: 'POST' }),
+  history: (monitorId: number) => request<{ data: CertCheckResult[] }>(`/certificates/${monitorId}/history`),
+};
+
+// Certificate monitoring types (inline for service use)
+export interface CertMonitor {
+  id: number;
+  domain_id: number;
+  endpoint: string;
+  label: string;
+  enabled: boolean;
+  created_at: string;
+  latest?: CertCheckResult;
+}
+
+export interface CertCheckResult {
+  id: number;
+  subject: string;
+  issuer: string;
+  valid_from: string;
+  valid_to: string;
+  days_remaining: number;
+  sans: string[];
+  chain_complete: boolean;
+  error?: string;
+  checked_at: string;
+}

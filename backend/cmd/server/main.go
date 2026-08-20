@@ -14,6 +14,7 @@ import (
 	"domainradar/internal/alert"
 	"domainradar/internal/audit"
 	"domainradar/internal/auth"
+	"domainradar/internal/certcheck"
 	"domainradar/internal/config"
 	"domainradar/internal/crypto"
 	"domainradar/internal/dashboard"
@@ -103,9 +104,16 @@ func main() {
 	// Rules handler
 	rulesHandler := config.NewRulesHandler(db, logger)
 
+	// Certificate monitoring handler
+	certHandler := certcheck.NewCertHandler(db, logger)
+
 	// Start alert scheduler (health score updates + expiration alerts)
 	alertScheduler := alert.NewAlertScheduler(db, logger)
 	alertScheduler.Start(context.Background())
+
+	// Start certificate scheduler (periodic TLS checks)
+	certScheduler := certcheck.NewCertScheduler(db, logger, 0)
+	certScheduler.Start(context.Background())
 
 	// Initialize router
 	router := setupRouter(
@@ -119,6 +127,7 @@ func main() {
 		registrarHandler,
 		notificationHandler,
 		rulesHandler,
+		certHandler,
 	)
 
 	// Get port from environment or default to 8080
@@ -144,6 +153,7 @@ func setupRouter(
 	registrarHandler *adapter.RegistrarHandler,
 	notificationHandler *notification.NotificationHandler,
 	rulesHandler *config.RulesHandler,
+	certHandler *certcheck.CertHandler,
 ) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -188,6 +198,9 @@ func setupRouter(
 
 			// Configuration
 			rulesHandler.RegisterRoutes(protected)
+
+			// Certificate monitoring
+			certHandler.RegisterRoutes(protected)
 		}
 	}
 

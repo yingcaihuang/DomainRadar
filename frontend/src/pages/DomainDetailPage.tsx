@@ -1,9 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge } from 'antd';
-import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, message, Popconfirm } from 'antd';
+import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined, PlusOutlined, SyncOutlined, DeleteOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { domainApi, monitorApi } from '../services';
+import { domainApi, monitorApi, certApi } from '../services';
+import type { CertMonitor } from '../services';
+import { useState } from 'react';
 
 // Format date to Chinese format
 function formatDate(dateStr: string | null | undefined): string {
@@ -34,6 +36,9 @@ export function DomainDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const domainId = Number(id);
+  const queryClient = useQueryClient();
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm] = Form.useForm();
 
   const { data: domainData, isLoading } = useQuery({
     queryKey: ['domain', domainId],
@@ -63,6 +68,42 @@ export function DomainDetailPage() {
     queryKey: ['website-checks', domainId],
     queryFn: () => monitorApi.website(domainId),
     enabled: !!domainId,
+  });
+
+  // Certificate monitoring queries
+  const { data: certMonitors, isLoading: certMonitorsLoading } = useQuery({
+    queryKey: ['cert-monitors', domainId],
+    queryFn: () => certApi.listMonitors(domainId),
+    enabled: !!domainId,
+  });
+
+  const addMonitorMutation = useMutation({
+    mutationFn: (data: { endpoint: string; label: string }) => certApi.addMonitor(domainId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cert-monitors', domainId] });
+      setAddModalOpen(false);
+      addForm.resetFields();
+      message.success('端点已添加');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const deleteMonitorMutation = useMutation({
+    mutationFn: (monitorId: number) => certApi.deleteMonitor(monitorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cert-monitors', domainId] });
+      message.success('端点已删除');
+    },
+    onError: (err: Error) => message.error(err.message),
+  });
+
+  const checkNowMutation = useMutation({
+    mutationFn: (monitorId: number) => certApi.checkNow(monitorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cert-monitors', domainId] });
+      message.success('检测完成');
+    },
+    onError: (err: Error) => message.error(err.message),
   });
 
   if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 100 }}><Spin size="large" /></div>;
@@ -237,6 +278,131 @@ export function DomainDetailPage() {
               ) : <p style={{ color: '#9ca3af', textAlign: 'center' }}>暂无监控数据</p>}
             </Card>
           </Col>
+        </Row>
+      ),
+    },
+    {
+      key: 'cert-monitor',
+      label: '证书监控',
+      children: (
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Card
+              title={<><SafetyCertificateOutlined style={{ marginRight: 8 }} />证书监控端点</>}
+              style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}
+              extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModalOpen(true)}>添加端点</Button>}
+            >
+              <Table<CertMonitor>
+                loading={certMonitorsLoading}
+                dataSource={certMonitors?.data || []}
+                rowKey="id"
+                pagination={false}
+                columns={[
+                  {
+                    title: '端点',
+                    dataIndex: 'endpoint',
+                    key: 'endpoint',
+                    render: (text: string, record: CertMonitor) => (
+                      <span>{text}{record.label && <Tag style={{ marginLeft: 8, borderRadius: 6 }}>{record.label}</Tag>}</span>
+                    ),
+                  },
+                  {
+                    title: '证书主体',
+                    key: 'subject',
+                    render: (_: unknown, record: CertMonitor) => record.latest?.subject || '-',
+                  },
+                  {
+                    title: '颁发机构',
+                    key: 'issuer',
+                    render: (_: unknown, record: CertMonitor) => record.latest?.issuer || '-',
+                  },
+                  {
+                    title: '到期时间',
+                    key: 'valid_to',
+                    render: (_: unknown, record: CertMonitor) => record.latest?.valid_to ? formatDate(record.latest.valid_to) : '-',
+                  },
+                  {
+                    title: '剩余天数',
+                    key: 'days_remaining',
+                    render: (_: unknown, record: CertMonitor) => {
+                      if (!record.latest) return '-';
+                      if (record.latest.error) return <Tag color="red">检测失败</Tag>;
+                      const days = record.latest.days_remaining;
+                      const color = days <= 7 ? 'red' : days <= 30 ? 'orange' : 'green';
+                      return <Tag color={color}>{days} 天</Tag>;
+                    },
+                  },
+                  {
+                    title: '证书链',
+                    key: 'chain',
+                    render: (_: unknown, record: CertMonitor) => {
+                      if (!record.latest || record.latest.error) return '-';
+                      return record.latest.chain_complete
+                        ? <Tag color="green">完整</Tag>
+                        : <Tag color="red">不完整</Tag>;
+                    },
+                  },
+                  {
+                    title: '操作',
+                    key: 'actions',
+                    render: (_: unknown, record: CertMonitor) => (
+                      <Space>
+                        <Button
+                          size="small"
+                          icon={<SyncOutlined />}
+                          loading={checkNowMutation.isPending}
+                          onClick={() => checkNowMutation.mutate(record.id)}
+                        >
+                          立即检测
+                        </Button>
+                        <Popconfirm title="确认删除此端点?" onConfirm={() => deleteMonitorMutation.mutate(record.id)}>
+                          <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+                        </Popconfirm>
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+
+          {/* Add Endpoint Modal */}
+          <Modal
+            title="添加证书监控端点"
+            open={addModalOpen}
+            onCancel={() => setAddModalOpen(false)}
+            onOk={() => addForm.submit()}
+            confirmLoading={addMonitorMutation.isPending}
+          >
+            <Form
+              form={addForm}
+              layout="vertical"
+              onFinish={(values) => addMonitorMutation.mutate(values)}
+            >
+              <Form.Item label="端点地址" name="endpoint" rules={[{ required: true, message: '请输入端点地址' }]}>
+                <Select
+                  mode="tags"
+                  maxCount={1}
+                  placeholder="选择或输入端点 (如 www.example.com:443)"
+                  options={domain ? [
+                    { value: `${domain.domain_name}:443`, label: `${domain.domain_name}:443 (主域名)` },
+                    { value: `www.${domain.domain_name}:443`, label: `www.${domain.domain_name}:443 (WWW)` },
+                    { value: `api.${domain.domain_name}:443`, label: `api.${domain.domain_name}:443 (API)` },
+                    { value: `mail.${domain.domain_name}:443`, label: `mail.${domain.domain_name}:443 (邮箱)` },
+                    { value: `cdn.${domain.domain_name}:443`, label: `cdn.${domain.domain_name}:443 (CDN)` },
+                  ] : []}
+                  onChange={(values) => {
+                    if (values && values.length > 0) {
+                      addForm.setFieldsValue({ endpoint: values[values.length - 1] });
+                    }
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="标签" name="label">
+                <Input placeholder="如：主站、API、邮箱" />
+              </Form.Item>
+            </Form>
+          </Modal>
         </Row>
       ),
     },
