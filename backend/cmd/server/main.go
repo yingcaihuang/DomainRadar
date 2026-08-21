@@ -143,14 +143,23 @@ func main() {
 
 	// Start email monitoring scheduler (periodic email DNS checks)
 	emailScheduler := emailcheck.NewEmailScheduler(db, logger, 0)
+	emailScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 	emailScheduler.Start(context.Background())
 
-	// Start service monitor scheduler (periodic probe checks)
+	// Start website health monitor (periodic HTTP checks + downtime alerts)
+	websiteMonitor := monitor.NewWebsiteMonitor(db, logger)
+	websiteMonitor.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
+	websiteMonitor.Start(context.Background())
+
 	// Start WHOIS scheduler (daily)
 	whoisScheduler := domainmgmt.NewWhoisScheduler(db, logger)
 	whoisScheduler.Start(context.Background())
 
-
+	// Start service monitor scheduler (periodic probe checks)
 	monitorScheduler := monitor.NewMonitorScheduler(db, logger)
 	monitorScheduler.Start(context.Background())
 

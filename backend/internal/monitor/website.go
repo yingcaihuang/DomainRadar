@@ -43,11 +43,15 @@ const (
 	FailureCategoryHTTPError    = "http_error"
 )
 
+// AlertDispatchFunc is a callback for webhook notification dispatch.
+type WebsiteAlertDispatchFunc func(alert *domain.Alert)
+
 // WebsiteMonitor performs periodic HTTP health checks on domains with associated website URLs.
 type WebsiteMonitor struct {
-	db     *gorm.DB
-	logger *zap.Logger
-	client *http.Client
+	db             *gorm.DB
+	logger         *zap.Logger
+	client         *http.Client
+	OnAlertCreated WebsiteAlertDispatchFunc
 }
 
 // NewWebsiteMonitor creates a new WebsiteMonitor instance.
@@ -406,6 +410,8 @@ func (m *WebsiteMonitor) handleRecovery(ctx context.Context, d domain.Normalized
 		m.logger.Error("failed to create recovery alert",
 			zap.String("domain", d.DomainName),
 			zap.Error(err))
+	} else if m.OnAlertCreated != nil {
+		m.OnAlertCreated(&recoveryAlert)
 		return
 	}
 

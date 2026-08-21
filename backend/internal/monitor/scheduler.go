@@ -18,11 +18,15 @@ const (
 	maxChecksPerMonitor = 1000
 )
 
+// AlertDispatchFunc is a callback for webhook notification dispatch.
+type AlertDispatchFunc func(alert *domain.Alert)
+
 // MonitorScheduler periodically runs probe checks for due service monitors.
 type MonitorScheduler struct {
-	db     *gorm.DB
-	logger *zap.Logger
-	mu     sync.Mutex
+	db             *gorm.DB
+	logger         *zap.Logger
+	mu             sync.Mutex
+	OnAlertCreated AlertDispatchFunc
 }
 
 // NewMonitorScheduler creates a new MonitorScheduler.

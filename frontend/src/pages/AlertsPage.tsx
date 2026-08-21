@@ -96,7 +96,7 @@ export function AlertsPage() {
       title: '时间',
       dataIndex: 'generated_at',
       key: 'generated_at',
-      render: (d: string) => new Date(d).toLocaleDateString(),
+      render: (d: string) => new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     },
     {
       title: '操作',

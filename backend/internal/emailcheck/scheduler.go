@@ -13,11 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// AlertDispatchFunc is a callback for webhook notification dispatch.
+type AlertDispatchFunc func(alert *domain.Alert)
+
 // EmailScheduler periodically checks all enabled email monitors.
 type EmailScheduler struct {
-	db       *gorm.DB
-	logger   *zap.Logger
-	interval time.Duration
+	db             *gorm.DB
+	logger         *zap.Logger
+	interval       time.Duration
+	OnAlertCreated AlertDispatchFunc
 }
 
 // NewEmailScheduler creates a new EmailScheduler.
@@ -243,6 +247,9 @@ func (s *EmailScheduler) maybeCreateAlert(ctx context.Context, monitor domain.Em
 				)
 			} else {
 				alertsCreated = true
+				if s.OnAlertCreated != nil {
+					s.OnAlertCreated(&alert)
+				}
 			}
 		}
 	}
