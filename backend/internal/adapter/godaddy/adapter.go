@@ -107,7 +107,7 @@ func (a *Adapter) TestConnection(ctx context.Context, credential *adapter.Regist
 
 // ListDomains retrieves all active domains from the GoDaddy account.
 func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/domains?limit=1000&statuses=ACTIVE,EXPIRED", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/domains?limit=1000", nil)
 	if err != nil {
 		return nil, fmt.Errorf("godaddy: failed to create request: %w", err)
 	}
