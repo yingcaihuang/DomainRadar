@@ -1,18 +1,27 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Modal, Form, Input, Tag, Space, Card, message, App } from 'antd';
-import { PlusOutlined, ExperimentOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Tag, Space, Card, message, App, Drawer } from 'antd';
+import { PlusOutlined, ExperimentOutlined, DeleteOutlined, HistoryOutlined } from '@ant-design/icons';
 import { notificationApi } from '../services';
+import type { NotificationLogEntry } from '../services';
 
 export function NotificationSettingsPage() {
   const { modal } = App.useApp();
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const [logsDrawer, setLogsDrawer] = useState<{ visible: boolean; channelId: number; channelName: string }>({ visible: false, channelId: 0, channelName: '' });
+  const [logsPage, setLogsPage] = useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ['notification-channels'],
     queryFn: notificationApi.channels.list,
+  });
+
+  const { data: logsData, isLoading: logsLoading } = useQuery({
+    queryKey: ['channel-logs', logsDrawer.channelId, logsPage],
+    queryFn: () => notificationApi.channels.logs(logsDrawer.channelId, logsPage),
+    enabled: logsDrawer.visible && logsDrawer.channelId > 0,
   });
 
   const createMutation = useMutation({
@@ -51,7 +60,7 @@ export function NotificationSettingsPage() {
     },
     {
       title: '状态', dataIndex: 'status', key: 'status',
-      render: (s: string) => <Tag color={s === 'active' ? 'green' : 'default'} style={{ borderRadius: 6 }}>{s === 'active' ? '正常' : '未激活'}</Tag>,
+      render: (s: string) => <Tag color={s === 'active' ? 'green' : s === 'error' ? 'red' : 'default'} style={{ borderRadius: 6 }}>{s === 'active' ? '正常' : s === 'error' ? '异常' : '未激活'}</Tag>,
     },
     { title: '最后测试', dataIndex: 'last_tested_at', key: 'last_tested_at', render: (d: string | null) => d ? new Date(d).toLocaleString('zh-CN') : '从未' },
     {
@@ -59,10 +68,55 @@ export function NotificationSettingsPage() {
       key: 'actions',
       render: (_: any, record: any) => (
         <Space>
+          <Button size="small" icon={<HistoryOutlined />} onClick={() => { setLogsDrawer({ visible: true, channelId: record.id, channelName: record.name }); setLogsPage(1); }}>日志</Button>
           <Button size="small" icon={<ExperimentOutlined />} onClick={() => testMutation.mutate(record.id)}>测试</Button>
-          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => modal.confirm({ title: '确定删除此渠道？', onOk: () => deleteMutation.mutate(record.id) })}>删除</Button>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => modal.confirm({ title: '确定删除此渠道？', onOk: () => deleteMutation.mutateAsync(record.id) })}>删除</Button>
         </Space>
       ),
+    },
+  ];
+
+  const logColumns = [
+    {
+      title: '时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 170,
+      render: (d: string) => new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 80,
+      render: (s: string) => <Tag color={s === 'sent' ? 'green' : s === 'failed' ? 'red' : 'orange'} style={{ borderRadius: 6 }}>{s === 'sent' ? '已发送' : s === 'failed' ? '失败' : '重试中'}</Tag>,
+    },
+    {
+      title: '告警类型',
+      dataIndex: 'alert_type',
+      key: 'alert_type',
+      width: 100,
+      render: (t: string) => <Tag style={{ borderRadius: 6 }}>{t}</Tag>,
+    },
+    {
+      title: '域名',
+      dataIndex: 'domain_name',
+      key: 'domain_name',
+      width: 150,
+      render: (d: string) => <span style={{ fontWeight: 500 }}>{d || '-'}</span>,
+    },
+    {
+      title: '消息',
+      dataIndex: 'message',
+      key: 'message',
+      ellipsis: true,
+    },
+    {
+      title: '错误原因',
+      dataIndex: 'error_reason',
+      key: 'error_reason',
+      ellipsis: true,
+      render: (e: string) => e ? <span style={{ color: '#ef4444', fontSize: 12 }}>{e}</span> : '-',
     },
   ];
 
@@ -101,6 +155,28 @@ export function NotificationSettingsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Drawer
+        title={`通知日志 — ${logsDrawer.channelName}`}
+        open={logsDrawer.visible}
+        onClose={() => setLogsDrawer({ visible: false, channelId: 0, channelName: '' })}
+        width={800}
+      >
+        <Table<NotificationLogEntry>
+          rowKey="id"
+          columns={logColumns}
+          dataSource={logsData?.data || []}
+          loading={logsLoading}
+          size="small"
+          pagination={{
+            current: logsPage,
+            total: logsData?.total || 0,
+            pageSize: 20,
+            onChange: setLogsPage,
+            showTotal: (total) => `共 ${total} 条记录`,
+          }}
+        />
+      </Drawer>
     </div>
   );
 }

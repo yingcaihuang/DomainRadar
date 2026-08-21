@@ -134,6 +134,20 @@ export const registrarApi = {
   status: (id: number) => request(`/registrars/${id}/status`),
 };
 
+export interface NotificationLogEntry {
+  id: number;
+  alert_id: number;
+  status: string;
+  error_reason: string;
+  retry_count: number;
+  sent_at: string | null;
+  created_at: string;
+  alert_type: string;
+  severity: string;
+  domain_name: string;
+  message: string;
+}
+
 // Notification channels
 export const notificationApi = {
   channels: {
@@ -144,6 +158,7 @@ export const notificationApi = {
       request<{ data: NotificationChannel }>(`/notifications/channels/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: number) => request(`/notifications/channels/${id}`, { method: 'DELETE' }),
     test: (id: number) => request(`/notifications/channels/${id}/test`, { method: 'POST' }),
+    logs: (id: number, page = 1) => request<{ data: NotificationLogEntry[]; total: number }>(`/notifications/channels/${id}/logs?page=${page}&page_size=20`),
   },
   rules: {
     list: () => request<{ data: any[] }>('/notifications/rules'),

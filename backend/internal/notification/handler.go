@@ -97,6 +97,7 @@ func (h *NotificationHandler) RegisterRoutes(rg *gin.RouterGroup) {
 			channels.PUT("/:id", h.UpdateChannel)
 			channels.DELETE("/:id", h.DeleteChannel)
 			channels.POST("/:id/test", h.TestChannel)
+			channels.GET("/:id/logs", h.ListChannelLogs)
 		}
 
 		// Rule endpoints
@@ -620,6 +621,88 @@ func (h *NotificationHandler) DeleteRule(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "notification rule deleted"})
+}
+
+
+// ListChannelLogs returns the notification delivery history for a specific channel.
+// GET /notifications/channels/:id/logs?page=1&page_size=20
+func (h *NotificationHandler) ListChannelLogs(c *gin.Context) {
+	channelID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		errors.ErrorResponse(c, errors.BadRequest("invalid channel ID"))
+		return
+	}
+
+	// Verify channel exists
+	var channel domain.NotificationChannel
+	if err := h.db.First(&channel, channelID).Error; err != nil {
+		errors.ErrorResponse(c, errors.NotFound("channel not found"))
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	var total int64
+	h.db.Model(&domain.NotificationLog{}).Where("channel_id = ?", channelID).Count(&total)
+
+	var logs []domain.NotificationLog
+	h.db.Where("channel_id = ?", channelID).
+		Preload("Alert").
+		Order("created_at DESC").
+		Offset((page - 1) * pageSize).
+		Limit(pageSize).
+		Find(&logs)
+
+	type LogResponse struct {
+		ID          uint       `json:"id"`
+		AlertID     uint       `json:"alert_id"`
+		Status      string     `json:"status"`
+		ErrorReason string     `json:"error_reason"`
+		RetryCount  int        `json:"retry_count"`
+		SentAt      *time.Time `json:"sent_at"`
+		CreatedAt   time.Time  `json:"created_at"`
+		AlertType   string     `json:"alert_type"`
+		Severity    string     `json:"severity"`
+		DomainName  string     `json:"domain_name"`
+		Message     string     `json:"message"`
+	}
+
+	responses := make([]LogResponse, 0, len(logs))
+	for _, log := range logs {
+		resp := LogResponse{
+			ID:          log.ID,
+			AlertID:     log.AlertID,
+			Status:      log.Status,
+			ErrorReason: log.ErrorReason,
+			RetryCount:  log.RetryCount,
+			SentAt:      log.SentAt,
+			CreatedAt:   log.CreatedAt,
+		}
+		if log.Alert.ID != 0 {
+			resp.AlertType = log.Alert.AlertType
+			resp.Severity = log.Alert.Severity
+			resp.Message = log.Alert.Message
+			// Get domain name
+			var dom domain.NormalizedDomain
+			if h.db.Select("domain_name").First(&dom, log.Alert.DomainID).Error == nil {
+				resp.DomainName = dom.DomainName
+			}
+		}
+		responses = append(responses, resp)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  responses,
+		"total": total,
+		"page":  page,
+	})
 }
 
 // --- Helper methods ---
