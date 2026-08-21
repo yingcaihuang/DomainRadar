@@ -194,7 +194,7 @@ export function DomainListPage() {
           modal.confirm({
             title: '确定删除此域名？',
             content: record.domain_name,
-            onOk: () => deleteMutation.mutate(record.id),
+            onOk: () => deleteMutation.mutateAsync(record.id),
           });
         }} />
       ),
@@ -267,7 +267,7 @@ export function DomainListPage() {
               modal.confirm({
                 title: `确定删除所选的 ${selectedRowKeys.length} 个域名？`,
                 content: '此操作不可撤销',
-                onOk: () => bulkMutation.mutate({ domain_ids: selectedRowKeys, action: 'delete' }),
+                onOk: () => bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'delete' }),
               });
             }}>批量删除</Button>
           </Space>

@@ -28,7 +28,10 @@ export function NotificationSettingsPage() {
 
   const testMutation = useMutation({
     mutationFn: notificationApi.channels.test,
-    onSuccess: () => message.success('Webhook 测试发送成功'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-channels'] });
+      message.success('Webhook 测试发送成功');
+    },
     onError: (e: Error) => message.error(`测试失败: ${e.message}`),
   });
 

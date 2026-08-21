@@ -925,9 +925,24 @@ func (h *DomainHandler) BulkOperation(c *gin.Context) {
 		})
 
 	case "delete":
-		h.db.Where("id IN ?", req.DomainIDs).Delete(&domain.NormalizedDomain{})
+		// Clear many-to-many Tags associations first, then delete each domain
+		// (matches single-delete behavior to avoid FK constraint partial failures)
+		var deletedCount int
+		for _, domainID := range req.DomainIDs {
+			var d domain.NormalizedDomain
+			if h.db.First(&d, domainID).Error != nil {
+				continue
+			}
+			h.db.Model(&d).Association("Tags").Clear()
+			if err := h.db.Delete(&d).Error; err != nil {
+				h.logger.Error("bulk delete: failed to delete domain",
+					zap.Uint("domain_id", domainID), zap.Error(err))
+				continue
+			}
+			deletedCount++
+		}
 		h.auditService.RecordAction(userID, "DELETE", "domain_bulk_delete", "batch", map[string]interface{}{
-			"domain_count": len(req.DomainIDs),
+			"domain_count": deletedCount,
 		})
 
 	default:
