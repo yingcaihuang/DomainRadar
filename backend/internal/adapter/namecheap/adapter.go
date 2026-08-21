@@ -195,6 +195,11 @@ func mapDomainToNormalized(d namecheapDomain) domain.NormalizedDomain {
 		Status:              "active",
 	}
 
+	// Override status if expired
+	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(time.Now()) {
+		nd.Status = "expired"
+	}
+
 	if created, err := time.Parse(dateFormat, d.Created); err == nil {
 		nd.CreationDate = &created
 	}

@@ -195,6 +195,11 @@ func mapToDomain(d registrarDomain, now time.Time) domain.NormalizedDomain {
 		Status:              "active",
 	}
 
+	// Override status if expired
+	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(now) {
+		nd.Status = "expired"
+	}
+
 	if d.CreatedAt != "" {
 		if t, err := time.Parse(time.RFC3339, d.CreatedAt); err == nil {
 			nd.CreationDate = &t

@@ -166,6 +166,11 @@ func mapDomainItem(d *domainSvc.DomainList) domain.NormalizedDomain {
 		nd.Status = "active"
 	}
 
+	// Override status if expired
+	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(time.Now()) {
+		nd.Status = "expired"
+	}
+
 	return nd
 }
 
@@ -193,6 +198,11 @@ func mapDomainBaseInfo(info *domainSvc.DomainBaseInfo) domain.NormalizedDomain {
 	}
 
 	nd.Status = "active"
+
+	// Override status if expired
+	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(time.Now()) {
+		nd.Status = "expired"
+	}
 
 	return nd
 }
