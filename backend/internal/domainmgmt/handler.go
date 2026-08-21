@@ -647,13 +647,7 @@ func (h *DomainHandler) DeleteDomain(c *gin.Context) {
 		return
 	}
 
-	h.db.Model(&d).Association("Tags").Clear()
-
-	if err := h.db.Delete(&d).Error; err != nil {
-		h.logger.Error("failed to delete domain", zap.Error(err))
-		errors.ErrorResponse(c, errors.InternalServer("failed to delete domain"))
-		return
-	}
+	h.deleteDomainCascade(&d)
 
 	userID := getUserID(c)
 	h.auditService.RecordAction(userID, "DELETE", "domain", strconv.Itoa(int(d.ID)), map[string]interface{}{
@@ -925,20 +919,14 @@ func (h *DomainHandler) BulkOperation(c *gin.Context) {
 		})
 
 	case "delete":
-		// Clear many-to-many Tags associations first, then delete each domain
-		// (matches single-delete behavior to avoid FK constraint partial failures)
+		// Cascade delete: remove all related records before deleting domains
 		var deletedCount int
 		for _, domainID := range req.DomainIDs {
 			var d domain.NormalizedDomain
 			if h.db.First(&d, domainID).Error != nil {
 				continue
 			}
-			h.db.Model(&d).Association("Tags").Clear()
-			if err := h.db.Delete(&d).Error; err != nil {
-				h.logger.Error("bulk delete: failed to delete domain",
-					zap.Uint("domain_id", domainID), zap.Error(err))
-				continue
-			}
+			h.deleteDomainCascade(&d)
 			deletedCount++
 		}
 		h.auditService.RecordAction(userID, "DELETE", "domain_bulk_delete", "batch", map[string]interface{}{
@@ -954,6 +942,29 @@ func (h *DomainHandler) BulkOperation(c *gin.Context) {
 		"message": fmt.Sprintf("bulk %s completed for %d domains", req.Action, len(req.DomainIDs)),
 		"count":   len(req.DomainIDs),
 	})
+}
+
+// deleteDomainCascade removes all related records and then deletes the domain itself.
+func (h *DomainHandler) deleteDomainCascade(d *domain.NormalizedDomain) {
+	id := d.ID
+
+	// Remove many-to-many tags
+	h.db.Model(d).Association("Tags").Clear()
+
+	// Delete all referencing records (order doesn't matter since there are no cross-FKs between them)
+	h.db.Where("domain_id = ?", id).Delete(&domain.Alert{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.NotificationRule{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.HealthCheck{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.CertificateCheck{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.CertificateMonitor{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.EmailCheckResult{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.EmailCheck{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.EmailMonitor{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.ServiceCheck{})
+	h.db.Where("domain_id = ?", id).Delete(&domain.ServiceMonitor{})
+
+	// Finally delete the domain
+	h.db.Delete(d)
 }
 
 // --- Tags ---
