@@ -157,6 +157,9 @@ func main() {
 
 	// Start WHOIS scheduler (daily)
 	whoisScheduler := domainmgmt.NewWhoisScheduler(db, logger)
+	whoisScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 	whoisScheduler.Start(context.Background())
 
 	// Start service monitor scheduler (periodic probe checks)

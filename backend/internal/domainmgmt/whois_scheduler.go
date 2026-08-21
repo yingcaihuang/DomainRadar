@@ -15,11 +15,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// AlertDispatchFunc is a callback for webhook notification dispatch.
+type WhoisAlertDispatchFunc func(alert *domain.Alert)
+
 // WhoisScheduler periodically checks WHOIS data for all domains.
 type WhoisScheduler struct {
-	db       *gorm.DB
-	logger   *zap.Logger
-	interval time.Duration
+	db             *gorm.DB
+	logger         *zap.Logger
+	interval       time.Duration
+	OnAlertCreated WhoisAlertDispatchFunc
 }
 
 // NewWhoisScheduler creates a new WhoisScheduler (default: 24 hours).
@@ -132,7 +136,38 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 		}
 	}
 
-	return s.db.WithContext(ctx).Model(d).Updates(updates).Error
+	// Detect changes that warrant an alert
+	var changes []string
+	if expDate, ok := updates["expiration_date"]; ok {
+		if d.ExpirationDate != nil {
+			newExp := expDate.(time.Time)
+			if !newExp.Equal(*d.ExpirationDate) {
+				changes = append(changes, fmt.Sprintf("到期日变更: %s → %s",
+					d.ExpirationDate.Format("2006-01-02"), newExp.Format("2006-01-02")))
+			}
+		}
+	}
+
+	if err := s.db.WithContext(ctx).Model(d).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	// Create alert for WHOIS changes
+	if len(changes) > 0 && s.OnAlertCreated != nil {
+		alert := domain.Alert{
+			DomainID:       d.ID,
+			AlertType:      "whois_change",
+			Severity:       "informational",
+			Message:        fmt.Sprintf("域名 %s WHOIS 信息变更: %s", d.DomainName, changes[0]),
+			DeliveryStatus: "pending",
+			GeneratedAt:    now,
+		}
+		if err := s.db.WithContext(ctx).Create(&alert).Error; err == nil {
+			s.OnAlertCreated(&alert)
+		}
+	}
+
+	return nil
 }
 
 func min(a, b int) int {
