@@ -161,6 +161,9 @@ func main() {
 
 	// Start service monitor scheduler (periodic probe checks)
 	monitorScheduler := monitor.NewMonitorScheduler(db, logger)
+	monitorScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 	monitorScheduler.Start(context.Background())
 
 	// Initialize router

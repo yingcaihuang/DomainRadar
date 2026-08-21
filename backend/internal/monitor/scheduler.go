@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -99,6 +100,9 @@ func (s *MonitorScheduler) isDue(m *domain.ServiceMonitor, now time.Time) bool {
 	return now.After(lastCheck.CheckedAt.Add(interval))
 }
 
+// consecutiveFailuresThreshold is the number of consecutive failures to trigger an alert.
+const consecutiveFailuresThreshold = 3
+
 // runCheck executes the probe for a monitor and saves the result.
 func (s *MonitorScheduler) runCheck(m *domain.ServiceMonitor) {
 	check := RunProbe(m)
@@ -109,8 +113,93 @@ func (s *MonitorScheduler) runCheck(m *domain.ServiceMonitor) {
 		return
 	}
 
+	// Evaluate alert condition
+	s.evaluateAlert(m, &check)
+
 	// Cleanup old records: keep only the latest maxChecksPerMonitor
 	s.cleanup(m.ID)
+}
+
+// evaluateAlert checks for consecutive failures and creates/clears downtime alerts.
+func (s *MonitorScheduler) evaluateAlert(m *domain.ServiceMonitor, currentCheck *domain.ServiceCheck) {
+	if currentCheck.Success {
+		// Recovery: check if there's an active downtime alert and close it
+		var activeAlert domain.Alert
+		err := s.db.Where(
+			"domain_id = ? AND alert_type = ? AND acknowledged = ?",
+			m.DomainID, "service_down", false,
+		).First(&activeAlert).Error
+		if err == nil {
+			// Mark as acknowledged (recovered)
+			now := time.Now()
+			s.db.Model(&activeAlert).Updates(map[string]interface{}{
+				"acknowledged":    true,
+				"acknowledged_at": &now,
+			})
+			// Create recovery alert
+			recoveryAlert := domain.Alert{
+				DomainID:       m.DomainID,
+				AlertType:      "service_recovered",
+				Severity:       "informational",
+				Message:        fmt.Sprintf("服务监控 [%s] %s 已恢复正常", m.Label, m.Target),
+				DeliveryStatus: "pending",
+				GeneratedAt:    now,
+			}
+			if err := s.db.Create(&recoveryAlert).Error; err == nil && s.OnAlertCreated != nil {
+				s.OnAlertCreated(&recoveryAlert)
+			}
+		}
+		return
+	}
+
+	// Failure: count consecutive failures
+	var recentChecks []domain.ServiceCheck
+	s.db.Where("monitor_id = ?", m.ID).
+		Order("checked_at DESC").
+		Limit(consecutiveFailuresThreshold).
+		Find(&recentChecks)
+
+	consecutiveFailures := 0
+	for _, c := range recentChecks {
+		if !c.Success {
+			consecutiveFailures++
+		} else {
+			break
+		}
+	}
+
+	if consecutiveFailures >= consecutiveFailuresThreshold {
+		// Check if alert already exists
+		var existing domain.Alert
+		err := s.db.Where(
+			"domain_id = ? AND alert_type = ? AND acknowledged = ?",
+			m.DomainID, "service_down", false,
+		).First(&existing).Error
+
+		if err != nil {
+			// No existing alert, create one
+			now := time.Now()
+			alert := domain.Alert{
+				DomainID:       m.DomainID,
+				AlertType:      "service_down",
+				Severity:       "critical",
+				Message:        fmt.Sprintf("服务监控 [%s] %s 连续 %d 次探测失败: %s", m.Label, m.Target, consecutiveFailures, currentCheck.Error),
+				DeliveryStatus: "pending",
+				GeneratedAt:    now,
+			}
+			if err := s.db.Create(&alert).Error; err != nil {
+				s.logger.Error("failed to create service down alert",
+					zap.Uint("monitor_id", m.ID), zap.Error(err))
+			} else {
+				s.logger.Warn("Service down alert created",
+					zap.String("target", m.Target),
+					zap.Int("consecutive_failures", consecutiveFailures))
+				if s.OnAlertCreated != nil {
+					s.OnAlertCreated(&alert)
+				}
+			}
+		}
+	}
 }
 
 // cleanup removes old check records beyond the retention limit.

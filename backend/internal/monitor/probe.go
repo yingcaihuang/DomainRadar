@@ -177,8 +177,22 @@ func probeHTTPDetailed(url string, timeout time.Duration, expectedStatus int, is
 	}
 	req.Header.Set("User-Agent", "DomainRadar-Monitor/1.0")
 
+	// Use a transport that bypasses proxy for monitoring probes.
+	// The container may have HTTP_PROXY set for other purposes,
+	// but probes should always connect directly to the target.
+	transport := &http.Transport{
+		Proxy:                 nil, // no proxy for probes
+		TLSClientConfig:      &tls.Config{InsecureSkipVerify: false},
+		MaxIdleConns:         10,
+		IdleConnTimeout:      30 * time.Second,
+		DisableKeepAlives:    true,
+		TLSHandshakeTimeout:  timeout,
+		ResponseHeaderTimeout: timeout,
+	}
+
 	client := &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: transport,
 		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("too many redirects")
