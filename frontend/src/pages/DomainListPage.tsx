@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App, Tooltip } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
 
@@ -24,6 +24,10 @@ export function DomainListPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [tagModalVisible, setTagModalVisible] = useState(false);
+  const [groupModalVisible, setGroupModalVisible] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
 
   const params: Record<string, string> = { page: String(page), page_size: String(pageSize) };
   if (search) params.search = search;
@@ -257,12 +261,8 @@ export function DomainListPage() {
         <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb', marginBottom: 16 }} styles={{ body: { padding: '12px 20px' } }}>
           <Space>
             <span style={{ color: '#6b7280' }}>已选 {selectedRowKeys.length} 项</span>
-            <Button size="small" icon={<TagOutlined />} onClick={() => {
-              const firstTag = tagsData?.data?.[0];
-              if (firstTag) {
-                bulkMutation.mutate({ domain_ids: selectedRowKeys, action: 'tag', tag_ids: [firstTag.id] });
-              }
-            }}>添加标签</Button>
+            <Button size="small" icon={<TagOutlined />} onClick={() => { setSelectedTagIds([]); setTagModalVisible(true); }}>设置标签</Button>
+            <Button size="small" icon={<GroupOutlined />} onClick={() => { setSelectedGroupId(null); setGroupModalVisible(true); }}>设置分组</Button>
             <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
               modal.confirm({
                 title: `确定删除所选的 ${selectedRowKeys.length} 个域名？`,
@@ -273,6 +273,28 @@ export function DomainListPage() {
           </Space>
         </Card>
       )}
+
+      {/* Tag Modal */}
+      <Modal title="批量设置标签" open={tagModalVisible} onCancel={() => setTagModalVisible(false)}
+        onOk={() => {
+          if (selectedTagIds.length === 0) { message.warning('请选择至少一个标签'); return; }
+          bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'tag', tag_ids: selectedTagIds }).then(() => setTagModalVisible(false));
+        }} okText="确定" cancelText="取消">
+        <Select mode="multiple" placeholder="选择要添加的标签" style={{ width: '100%' }} value={selectedTagIds}
+          onChange={setSelectedTagIds}
+          options={(tagsData?.data || []).map((t: any) => ({ value: t.id, label: t.name }))} />
+      </Modal>
+
+      {/* Group Modal */}
+      <Modal title="批量设置分组" open={groupModalVisible} onCancel={() => setGroupModalVisible(false)}
+        onOk={() => {
+          if (!selectedGroupId) { message.warning('请选择一个分组'); return; }
+          bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'group', group_id: selectedGroupId }).then(() => setGroupModalVisible(false));
+        }} okText="确定" cancelText="取消">
+        <Select placeholder="选择分组" style={{ width: '100%' }} value={selectedGroupId}
+          onChange={setSelectedGroupId}
+          options={(groupsData?.data || []).map((g: any) => ({ value: g.id, label: g.name }))} />
+      </Modal>
 
       {/* Table */}
       <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb' }} styles={{ body: { padding: 0 } }}>
