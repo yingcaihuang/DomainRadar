@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Spin, Tag, Card, Segmented, Popover } from 'antd';
@@ -38,6 +38,18 @@ export function CalendarPage() {
     borderColor: severityColors[entry.severity] || '#6366f1',
     extendedProps: entry,
   })) || [];
+
+  // Auto-scroll to today's position after calendar renders
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(() => {
+      const todayEl = document.querySelector('.fc-day-today');
+      if (todayEl) {
+        todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
