@@ -8,6 +8,18 @@ import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services
 
 const { Search } = Input;
 
+// Mute tags get special colors to indicate alert suppression
+const muteTagColors: Record<string, string> = {
+  '不续费': 'volcano',
+  'no-renew': 'orange',
+  'muted': 'gold',
+  'ignore': 'lime',
+};
+
+function getMuteTagColor(tagName: string): string {
+  return muteTagColors[tagName.toLowerCase()] || muteTagColors[tagName] || 'purple';
+}
+
 export function DomainListPage() {
   const { modal } = App.useApp();
   const navigate = useNavigate();
@@ -142,7 +154,7 @@ export function DomainListPage() {
       key: 'tags',
       render: (tags: { id: number; name: string }[]) => (
         <Space size={2} wrap>
-          {tags?.slice(0, 3).map(t => <Tag key={t.id} color="purple" style={{ borderRadius: 6 }}>{t.name}</Tag>)}
+          {tags?.slice(0, 3).map(t => <Tag key={t.id} color={getMuteTagColor(t.name)} style={{ borderRadius: 6 }}>{t.name}</Tag>)}
           {tags?.length > 3 && <Tag style={{ borderRadius: 6 }}>+{tags.length - 3}</Tag>}
         </Space>
       ),
@@ -225,6 +237,14 @@ export function DomainListPage() {
               域名管理
             </h1>
             <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>管理您的所有域名资产</p>
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>静默标签:</span>
+              <Tag color="volcano" style={{ borderRadius: 6, fontSize: 11 }}>不续费</Tag>
+              <Tag color="orange" style={{ borderRadius: 6, fontSize: 11 }}>no-renew</Tag>
+              <Tag color="gold" style={{ borderRadius: 6, fontSize: 11 }}>muted</Tag>
+              <Tag color="lime" style={{ borderRadius: 6, fontSize: 11 }}>ignore</Tag>
+              <span style={{ fontSize: 11, color: '#9ca3af' }}>— 标记后停止所有告警推送</span>
+            </div>
           </div>
           <Space>
             <Button icon={<UploadOutlined />} onClick={() => setImportModalVisible(true)}>导入</Button>
