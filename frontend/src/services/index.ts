@@ -91,7 +91,9 @@ export const alertApi = {
     return request<{ alerts: Alert[]; total: number; page: number; page_size: number; total_pages: number }>(`/alerts${qs}`);
   },
   get: (id: number) => request<Alert>(`/alerts/${id}`),
-  acknowledge: (id: number) => request(`/alerts/${id}/acknowledge`, { method: 'PUT' }),
+  batchAcknowledge: (alertIds: number[]) =>
+      request('/alerts/batch-acknowledge', { method: 'POST', body: JSON.stringify({ alert_ids: alertIds }) }),
+    acknowledge: (id: number) => request(`/alerts/${id}/acknowledge`, { method: 'PUT' }),
 };
 
 // Dashboard

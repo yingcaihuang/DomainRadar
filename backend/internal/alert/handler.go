@@ -218,6 +218,42 @@ func (h *AlertHandler) HandleAcknowledgeAlert(c *gin.Context) {
 	})
 }
 
+// HandleBatchAcknowledge marks multiple alerts as acknowledged.
+// POST /api/v1/alerts/batch-acknowledge  body: {"alert_ids": [1,2,3]}
+func (h *AlertHandler) HandleBatchAcknowledge(c *gin.Context) {
+	var req struct {
+		AlertIDs []uint `json:"alert_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errors.ErrorResponse(c, errors.BadRequest("invalid request body"))
+		return
+	}
+
+	if len(req.AlertIDs) == 0 {
+		errors.ErrorResponse(c, errors.BadRequest("alert_ids is required"))
+		return
+	}
+
+	now := time.Now()
+	result := h.db.Model(&domain.Alert{}).
+		Where("id IN ? AND acknowledged = ?", req.AlertIDs, false).
+		Updates(map[string]interface{}{
+			"acknowledged":    true,
+			"acknowledged_at": now,
+		})
+
+	if result.Error != nil {
+		h.logger.Error("failed to batch acknowledge alerts", zap.Error(result.Error))
+		errors.ErrorResponse(c, errors.InternalServer("failed to batch acknowledge"))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "batch acknowledge completed",
+		"acknowledged": result.RowsAffected,
+	})
+}
+
 // RegisterRoutes registers alert routes on the given router group.
 func (h *AlertHandler) RegisterRoutes(group *gin.RouterGroup) {
 	alerts := group.Group("/alerts")
@@ -225,6 +261,7 @@ func (h *AlertHandler) RegisterRoutes(group *gin.RouterGroup) {
 		alerts.GET("", auth.RequirePermission(auth.ViewAlerts), h.HandleListAlerts)
 		alerts.GET("/:id", auth.RequirePermission(auth.ViewAlerts), h.HandleGetAlert)
 		alerts.PUT("/:id/acknowledge", auth.RequirePermission(auth.ManageAlerts), h.HandleAcknowledgeAlert)
+		alerts.POST("/batch-acknowledge", auth.RequirePermission(auth.ManageAlerts), h.HandleBatchAcknowledge)
 	}
 }
 

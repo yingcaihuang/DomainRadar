@@ -16,6 +16,7 @@ export function AlertsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [severity, setSeverity] = useState('');
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [alertType, setAlertType] = useState('');
 
   const params: Record<string, string> = { page: String(page), page_size: '20' };
@@ -25,6 +26,16 @@ export function AlertsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['alerts', params],
     queryFn: () => alertApi.list(params),
+  });
+
+  const batchAckMutation = useMutation({
+    mutationFn: (ids: number[]) => alertApi.batchAcknowledge(ids),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      setSelectedRowKeys([]);
+      message.success(`已批量确认 ${data.acknowledged} 条告警`);
+    },
+    onError: (e: Error) => message.error(e.message),
   });
 
   const ackMutation = useMutation({
@@ -152,6 +163,20 @@ export function AlertsPage() {
         </Space>
       </Card>
 
+      {/* Batch Actions */}
+      {selectedRowKeys.length > 0 && (
+        <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb', marginBottom: 16 }} styles={{ body: { padding: '12px 20px' } }}>
+          <Space>
+            <span style={{ color: '#6b7280' }}>已选 {selectedRowKeys.length} 条告警</span>
+            <Button size="small" type="primary" icon={<CheckOutlined />}
+              onClick={() => batchAckMutation.mutate(selectedRowKeys)}
+              loading={batchAckMutation.isPending}>
+              批量确认
+            </Button>
+          </Space>
+        </Card>
+      )}
+
       {/* Table */}
       <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb' }} styles={{ body: { padding: 0 } }}>
         <Table
@@ -159,6 +184,10 @@ export function AlertsPage() {
           columns={columns}
           dataSource={data?.alerts || []}
           loading={isLoading}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (keys) => setSelectedRowKeys(keys as number[]),
+          }}
           pagination={{
             current: page,
             total: data?.total || 0,
