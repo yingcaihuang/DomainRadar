@@ -33,6 +33,7 @@ export function AlertsPage() {
     mutationFn: (ids: number[]) => alertApi.batchAcknowledge(ids),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['alert-count'] });
       setSelectedRowKeys([]);
       message.success(`已批量确认 ${data.acknowledged} 条告警`);
     },
@@ -43,6 +44,7 @@ export function AlertsPage() {
     mutationFn: alertApi.acknowledge,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['alert-count'] });
       message.success('告警已确认');
     },
   });
