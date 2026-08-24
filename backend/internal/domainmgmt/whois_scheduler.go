@@ -141,9 +141,13 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 	if expDate, ok := updates["expiration_date"]; ok {
 		if d.ExpirationDate != nil {
 			newExp := expDate.(time.Time)
-			if !newExp.Equal(*d.ExpirationDate) {
+			// Compare date part only — WHOIS and registrar APIs often return
+			// the same date with different time/timezone components
+			oldDate := d.ExpirationDate.Format("2006-01-02")
+			newDate := newExp.Format("2006-01-02")
+			if oldDate != newDate {
 				changes = append(changes, fmt.Sprintf("到期日变更: %s → %s",
-					d.ExpirationDate.Format("2006-01-02"), newExp.Format("2006-01-02")))
+					oldDate, newDate))
 			}
 		}
 	}
