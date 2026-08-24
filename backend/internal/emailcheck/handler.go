@@ -43,6 +43,7 @@ func (h *EmailHandler) RegisterRoutes(group *gin.RouterGroup) {
 type configureRequest struct {
 	DKIMSelectors string `json:"dkim_selectors"`
 	MailServerIPs string `json:"mail_server_ips"`
+	Enabled       *bool  `json:"enabled"`
 }
 
 type monitorResponse struct {
@@ -142,9 +143,13 @@ func (h *EmailHandler) ConfigureMonitor(c *gin.Context) {
 	var monitor domain.EmailMonitor
 	result := h.db.Where("domain_id = ?", domainID).First(&monitor)
 	if result.Error == gorm.ErrRecordNotFound {
+		enabled := true
+		if req.Enabled != nil {
+			enabled = *req.Enabled
+		}
 		monitor = domain.EmailMonitor{
 			DomainID:      uint(domainID),
-			Enabled:       true,
+			Enabled:       enabled,
 			DKIMSelectors: req.DKIMSelectors,
 			MailServerIPs: req.MailServerIPs,
 		}
@@ -161,7 +166,9 @@ func (h *EmailHandler) ConfigureMonitor(c *gin.Context) {
 		updates := map[string]interface{}{
 			"dkim_selectors":  req.DKIMSelectors,
 			"mail_server_ips": req.MailServerIPs,
-			"enabled":         true,
+		}
+		if req.Enabled != nil {
+			updates["enabled"] = *req.Enabled
 		}
 		if err := h.db.Model(&monitor).Updates(updates).Error; err != nil {
 			h.logger.Error("failed to update email monitor", zap.Error(err))

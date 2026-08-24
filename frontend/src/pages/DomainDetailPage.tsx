@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, message, Popconfirm, Collapse } from 'antd';
+import { Card, Col, Row, Descriptions, Tag, Spin, Button, Space, Tabs, Progress, Badge, Table, Modal, Form, Input, Select, Switch, message, Popconfirm, Collapse } from 'antd';
 import { EditOutlined, ArrowLeftOutlined, GlobalOutlined, SafetyCertificateOutlined, CloudOutlined, PlusOutlined, SyncOutlined, DeleteOutlined, MailOutlined } from '@ant-design/icons';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { domainApi, monitorApi, certApi, emailMonitorApi } from '../services';
@@ -223,10 +223,11 @@ function EmailSecurityTab({ emailMonitorData, emailMonitorLoading, emailHistoryD
             form={emailConfigForm}
             layout="vertical"
             initialValues={{
+              enabled: emailMonitorData?.enabled !== false,
               dkim_selectors: emailMonitorData?.dkim_selectors || 'google,default,selector1,selector2,k1,s1,dkim',
               mail_server_ips: emailMonitorData?.mail_server_ips || '',
             }}
-            onFinish={(values: { dkim_selectors: string; mail_server_ips: string }) => emailConfigMutation.mutate(values)}
+            onFinish={(values: { dkim_selectors: string; mail_server_ips: string; enabled: boolean }) => emailConfigMutation.mutate(values)}
           >
             <Form.Item
               label="DKIM 选择器"
