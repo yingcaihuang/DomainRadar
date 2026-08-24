@@ -59,12 +59,15 @@ export function CalendarPage() {
     switch (mode) {
       case 'year':
         api.changeView('multiMonthYear');
+        api.today();
         break;
       case 'quarter':
-        api.changeView('multiMonthYear', { multiMonthMaxColumns: 1, duration: { months: 3 } });
+        api.changeView('dayGridMonth', { duration: { months: 3 } });
+        api.today();
         break;
       case 'month':
         api.changeView('dayGridMonth');
+        api.today();
         break;
     }
   };
@@ -121,8 +124,8 @@ export function CalendarPage() {
             plugins={[dayGridPlugin as any, multiMonthPlugin as any]}
             initialView="multiMonthYear"
             initialDate={new Date()}
-            multiMonthMaxColumns={viewMode === 'quarter' ? 1 : 3}
-            duration={viewMode === 'quarter' ? { months: 3 } : undefined}
+            multiMonthMaxColumns={3}
+            
             events={events}
             height="auto"
             dayMaxEvents={100}
