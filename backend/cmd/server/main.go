@@ -113,6 +113,7 @@ func main() {
 	// Notification handler with channel registry
 	channelRegistry := notification.NewChannelRegistry()
 	channelRegistry.Register("webhook", func(config *notification.ChannelConfig) notification.NotificationChannel { return notification.NewWebhookChannel(config) })
+	channelRegistry.Register("cne_alarm", func(config *notification.ChannelConfig) notification.NotificationChannel { return notification.NewCNEAlarmChannel(config) })
 	notificationHandler := notification.NewNotificationHandler(db, cryptoService, channelRegistry, auditService, logger)
 
 	// Rules handlers
@@ -384,5 +385,31 @@ func seedDefaultTagsAndGroups(db *gorm.DB, logger *zap.Logger) {
 	}
 
 	logger.Info("Default tags and groups seeded")
+
+	// Seed default CNE alarm channel if not exists
+	var cneCount int64
+	db.Model(&domain.NotificationChannel{}).Where("channel_type = ?", "cne_alarm").Count(&cneCount)
+	if cneCount == 0 {
+		// Encrypt the default config
+		masterKey := os.Getenv("DOMAINRADAR_MASTER_KEY")
+		if masterKey != "" {
+			cryptoSvc, cryptoErr := crypto.NewCryptoService(masterKey)
+			if cryptoErr == nil {
+			configJSON := `{"api_url":"https://cne.verycloud.cn/monitor/api/v1/alarms","api_key":"4d3c2b1a-9f8e-47d6-a5c4-123456789abc","alarm_code":"2809"}`
+			encrypted, err := cryptoSvc.Encrypt(configJSON)
+			if err == nil {
+				ch := domain.NotificationChannel{
+					ChannelType:     "cne_alarm",
+					Name:            "CNE 告警平台",
+					ConfigEncrypted: encrypted,
+					Status:          "active",
+				}
+				if err := db.Create(&ch).Error; err == nil {
+					logger.Info("Default CNE alarm channel created")
+				}
+			}
+			}
+		}
+	}
 }
 // Build trigger: 1787227235

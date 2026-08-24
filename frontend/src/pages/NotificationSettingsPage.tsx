@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Modal, Form, Input, Tag, Space, Card, message, App, Drawer } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, App, Drawer } from 'antd';
 import { PlusOutlined, ExperimentOutlined, DeleteOutlined, HistoryOutlined } from '@ant-design/icons';
 import { notificationApi } from '../services';
 import type { NotificationLogEntry } from '../services';
@@ -56,7 +56,14 @@ export function NotificationSettingsPage() {
     { title: '名称', dataIndex: 'name', key: 'name', render: (t: string) => <span style={{ fontWeight: 500 }}>{t}</span> },
     {
       title: '类型', dataIndex: 'channel_type', key: 'channel_type',
-      render: () => <Tag color="blue" style={{ borderRadius: 6 }}>Webhook</Tag>,
+      render: (type: string) => {
+        const typeMap: Record<string, { label: string; color: string }> = {
+          webhook: { label: 'Webhook', color: 'blue' },
+          cne_alarm: { label: 'CNE 告警', color: 'purple' },
+        };
+        const cfg = typeMap[type] || { label: type, color: 'default' };
+        return <Tag color={cfg.color} style={{ borderRadius: 6 }}>{cfg.label}</Tag>;
+      },
     },
     {
       title: '状态', dataIndex: 'status', key: 'status',
@@ -138,20 +145,46 @@ export function NotificationSettingsPage() {
         <Table rowKey="id" columns={columns} dataSource={data?.data || []} loading={isLoading} pagination={false} />
       </Card>
 
-      <Modal title="添加 Webhook 渠道" open={modalVisible} onCancel={() => setModalVisible(false)} onOk={() => form.submit()} confirmLoading={createMutation.isPending} okText="创建" cancelText="取消">
-        <Form form={form} layout="vertical" onFinish={(values) => {
-          createMutation.mutate({
-            channel_type: 'webhook',
-            name: values.name,
-            config: { webhook_url: values.webhook_url },
-          });
+      <Modal title="添加通知渠道" open={modalVisible} onCancel={() => setModalVisible(false)} onOk={() => form.submit()} confirmLoading={createMutation.isPending} okText="创建" cancelText="取消">
+        <Form form={form} layout="vertical" initialValues={{ channel_type: 'webhook' }} onFinish={(values) => {
+          const config: Record<string, string> = {};
+          if (values.channel_type === 'webhook') {
+            config.webhook_url = values.webhook_url;
+          } else if (values.channel_type === 'cne_alarm') {
+            config.api_url = values.api_url || 'https://cne.verycloud.cn/monitor/api/v1/alarms';
+            config.api_key = values.api_key;
+            if (values.alarm_code) config.alarm_code = values.alarm_code;
+          }
+          createMutation.mutate({ channel_type: values.channel_type, name: values.name, config });
         }}>
-          <Form.Item name="name" label="渠道名称" rules={[{ required: true, message: '请输入渠道名称' }]}>
-            <Input placeholder="如：运维告警群、DomainRadar通知" />
+          <Form.Item name="channel_type" label="渠道类型" rules={[{ required: true }]}>
+            <Select options={[
+              { value: 'webhook', label: 'Webhook (钉钉/企微/飞书/Slack)' },
+              { value: 'cne_alarm', label: 'CNE 告警平台' },
+            ]} />
           </Form.Item>
-          <Form.Item name="webhook_url" label="Webhook URL" rules={[{ required: true, message: '请输入 Webhook 地址' }]}
-            extra="支持企业微信机器人、钉钉机器人、飞书机器人、Slack Webhook 等">
-            <Input placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+          <Form.Item name="name" label="渠道名称" rules={[{ required: true, message: '请输入渠道名称' }]}>
+            <Input placeholder="如：运维告警群、CNE告警" />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.channel_type !== cur.channel_type}>
+            {({ getFieldValue }) => getFieldValue('channel_type') === 'webhook' ? (
+              <Form.Item name="webhook_url" label="Webhook URL" rules={[{ required: true, message: '请输入 Webhook 地址' }]}
+                extra="支持企业微信机器人、钉钉机器人、飞书机器人、Slack Webhook 等">
+                <Input placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+              </Form.Item>
+            ) : (
+              <>
+                <Form.Item name="api_url" label="API 地址" extra="默认: https://cne.verycloud.cn/monitor/api/v1/alarms">
+                  <Input placeholder="https://cne.verycloud.cn/monitor/api/v1/alarms" />
+                </Form.Item>
+                <Form.Item name="api_key" label="API Key (X-Api-Key)" rules={[{ required: true, message: '请输入 API Key' }]}>
+                  <Input placeholder="4d3c2b1a-9f8e-47d6-a5c4-123456789abc" />
+                </Form.Item>
+                <Form.Item name="alarm_code" label="告警编码" extra="默认: 2809">
+                  <Input placeholder="2809" />
+                </Form.Item>
+              </>
+            )}
           </Form.Item>
         </Form>
       </Modal>
