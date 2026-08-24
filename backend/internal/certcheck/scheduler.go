@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"domainradar/internal/domain"
@@ -136,6 +137,14 @@ func (s *CertScheduler) RunAllChecks(ctx context.Context) error {
 
 // maybeCreateAlert creates an alert if the certificate is expiring soon or has errors.
 func (s *CertScheduler) maybeCreateAlert(ctx context.Context, monitor domain.CertificateMonitor, result *CertResult, now time.Time) bool {
+	// Check if domain has mute tag (e.g. "不续费") — skip alert
+	var dom domain.NormalizedDomain
+	if s.db.WithContext(ctx).Preload("Tags").First(&dom, monitor.DomainID).Error == nil {
+		if domainHasMuteTag(dom.Tags) {
+			return false
+		}
+	}
+
 	var alertType string
 	var severity string
 	var message string
@@ -192,5 +201,20 @@ func (s *CertScheduler) maybeCreateAlert(ctx context.Context, monitor domain.Cer
 		return true
 	}
 
+	return false
+}
+
+// muteTagNames are tag names that suppress alerts for a domain.
+var muteTagNames = []string{"不续费", "no-renew", "muted", "ignore"}
+
+// domainHasMuteTag checks if the domain has a tag that suppresses alerts.
+func domainHasMuteTag(tags []domain.Tag) bool {
+	for _, tag := range tags {
+		for _, mute := range muteTagNames {
+			if strings.EqualFold(tag.Name, mute) {
+				return true
+			}
+		}
+	}
 	return false
 }

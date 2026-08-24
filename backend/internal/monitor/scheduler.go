@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -120,8 +121,23 @@ func (s *MonitorScheduler) runCheck(m *domain.ServiceMonitor) {
 	s.cleanup(m.ID)
 }
 
+// muteTagNames are tag names that suppress alerts for a domain.
+var muteTagNames = []string{"不续费", "no-renew", "muted", "ignore"}
+
 // evaluateAlert checks for consecutive failures and creates/clears downtime alerts.
 func (s *MonitorScheduler) evaluateAlert(m *domain.ServiceMonitor, currentCheck *domain.ServiceCheck) {
+	// Check if domain has mute tag — skip alert generation
+	var dom domain.NormalizedDomain
+	if s.db.Preload("Tags").First(&dom, m.DomainID).Error == nil {
+		for _, tag := range dom.Tags {
+			for _, mute := range muteTagNames {
+				if strings.EqualFold(tag.Name, mute) {
+					return
+				}
+			}
+		}
+	}
+
 	if currentCheck.Success {
 		// Recovery: check if there's an active downtime alert and close it
 		var activeAlert domain.Alert

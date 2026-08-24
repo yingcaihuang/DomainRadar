@@ -3,6 +3,7 @@ package alert
 import (
 	"context"
 	"fmt"
+	"strings"
 	"math"
 	"time"
 
@@ -30,9 +31,13 @@ func NewAlertScheduler(db *gorm.DB, logger *zap.Logger) *AlertScheduler {
 // RunExpirationCheck scans all domains and:
 // 1. Updates health_score based on days until expiration
 // 2. Creates alert records for expired / expiring domains
+// muteTagNames are tag names that suppress alerts for a domain.
+var muteTagNames = []string{"不续费", "no-renew", "muted", "ignore"}
+
 func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 	var domains []domain.NormalizedDomain
 	if err := s.db.WithContext(ctx).
+		Preload("Tags").
 		Where("expiration_date IS NOT NULL").
 		Find(&domains).Error; err != nil {
 		return fmt.Errorf("failed to query domains: %w", err)
@@ -49,6 +54,11 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 
 		// Update health score
 		s.db.WithContext(ctx).Model(&d).Update("health_score", healthScore)
+
+		// Skip alert if domain has a mute tag (e.g. "不续费")
+		if hasMuteTag(d.Tags) {
+			continue
+		}
 
 		// Determine if alert is needed
 		var severity string
@@ -122,6 +132,18 @@ func formatAlertMessage(domainName string, daysRemaining int) string {
 		return fmt.Sprintf("域名 %s 今天到期", domainName)
 	}
 	return fmt.Sprintf("域名 %s 将在 %d 天后到期", domainName, daysRemaining)
+}
+
+// hasMuteTag checks if the domain has a tag that suppresses alerts.
+func hasMuteTag(tags []domain.Tag) bool {
+	for _, tag := range tags {
+		for _, mute := range muteTagNames {
+			if strings.EqualFold(tag.Name, mute) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Start launches the alert scheduler as a background goroutine, running checks periodically.
