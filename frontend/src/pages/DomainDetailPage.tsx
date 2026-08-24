@@ -229,6 +229,9 @@ function EmailSecurityTab({ emailMonitorData, emailMonitorLoading, emailHistoryD
             }}
             onFinish={(values: { dkim_selectors: string; mail_server_ips: string; enabled: boolean }) => emailConfigMutation.mutate(values)}
           >
+            <Form.Item name="enabled" label="启用邮件监控" valuePropName="checked">
+              <Switch checkedChildren="开" unCheckedChildren="关" />
+            </Form.Item>
             <Form.Item
               label="DKIM 选择器"
               name="dkim_selectors"
