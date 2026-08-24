@@ -1200,11 +1200,27 @@ type CalendarEntry struct {
 }
 
 func (h *DomainHandler) GetCalendar(c *gin.Context) {
-	year, _ := strconv.Atoi(c.DefaultQuery("year", strconv.Itoa(time.Now().Year())))
-	month, _ := strconv.Atoi(c.DefaultQuery("month", strconv.Itoa(int(time.Now().Month()))))
+	// Support range query: start/end take priority over year/month
+	var startDate, endDate time.Time
 
-	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-	endDate := startDate.AddDate(0, 1, 0)
+	if startStr := c.Query("start"); startStr != "" {
+		if t, err := time.Parse("2006-01-02", startStr); err == nil {
+			startDate = t
+		}
+	}
+	if endStr := c.Query("end"); endStr != "" {
+		if t, err := time.Parse("2006-01-02", endStr); err == nil {
+			endDate = t
+		}
+	}
+
+	// Fallback to year/month if no range specified
+	if startDate.IsZero() || endDate.IsZero() {
+		year, _ := strconv.Atoi(c.DefaultQuery("year", strconv.Itoa(time.Now().Year())))
+		month, _ := strconv.Atoi(c.DefaultQuery("month", strconv.Itoa(int(time.Now().Month()))))
+		startDate = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+		endDate = startDate.AddDate(0, 1, 0)
+	}
 
 	var domains []domain.NormalizedDomain
 	h.db.Where("expiration_date >= ? AND expiration_date < ?", startDate, endDate).Find(&domains)
