@@ -93,42 +93,44 @@ export function NotificationSettingsPage() {
       title: '时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      width: 170,
-      render: (d: string) => new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      width: 150,
+      render: (d: string) => new Date(d).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
-      render: (s: string) => <Tag color={s === 'sent' ? 'green' : s === 'failed' ? 'red' : 'orange'} style={{ borderRadius: 6 }}>{s === 'sent' ? '已发送' : s === 'failed' ? '失败' : '重试中'}</Tag>,
+      width: 70,
+      render: (s: string) => <Tag color={s === 'sent' ? 'green' : s === 'failed' ? 'red' : 'orange'} style={{ borderRadius: 6 }}>{s === 'sent' ? '成功' : s === 'failed' ? '失败' : '重试'}</Tag>,
     },
     {
-      title: '告警类型',
+      title: '类型',
       dataIndex: 'alert_type',
       key: 'alert_type',
-      width: 100,
-      render: (t: string) => <Tag style={{ borderRadius: 6 }}>{t}</Tag>,
+      width: 120,
+      ellipsis: true,
     },
     {
       title: '域名',
       dataIndex: 'domain_name',
       key: 'domain_name',
-      width: 150,
-      render: (d: string) => <span style={{ fontWeight: 500 }}>{d || '-'}</span>,
+      width: 160,
+      ellipsis: true,
     },
     {
       title: '消息',
       dataIndex: 'message',
       key: 'message',
+      width: 200,
       ellipsis: true,
     },
     {
-      title: '错误原因',
+      title: '错误',
       dataIndex: 'error_reason',
       key: 'error_reason',
+      width: 150,
       ellipsis: true,
-      render: (e: string) => e ? <span style={{ color: '#ef4444', fontSize: 12 }}>{e}</span> : '-',
+      render: (e: string) => e ? <span style={{ color: '#ef4444' }}>{e}</span> : '-',
     },
   ];
 
@@ -206,6 +208,8 @@ export function NotificationSettingsPage() {
           dataSource={logsData?.data || []}
           loading={logsLoading}
           size="small"
+          scroll={{ x: 900 }}
+          tableLayout="fixed"
           pagination={{
             current: logsPage,
             total: logsData?.total || 0,
