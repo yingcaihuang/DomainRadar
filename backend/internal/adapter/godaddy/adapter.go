@@ -132,6 +132,12 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 
 	domains := make([]domain.NormalizedDomain, 0, len(gdDomains))
 	for _, gd := range gdDomains {
+		// Skip cancelled/terminated domains — they are no longer under management
+		if gd.Status == "CANCELLED" || gd.Status == "CANCELLED_HELD" ||
+			gd.Status == "CANCELLED_REDEEMABLE" || gd.Status == "CANCELLED_TRANSFER" {
+			continue
+		}
+
 		d, err := mapToDomain(gd)
 		if err != nil {
 			// Skip domains that fail to parse, but continue processing others
