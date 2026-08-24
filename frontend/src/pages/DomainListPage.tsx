@@ -5,6 +5,7 @@ import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, m
 import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
+import type { Tag, Group } from '../types';
 
 const { Search } = Input;
 
@@ -294,26 +295,67 @@ export function DomainListPage() {
         </Card>
       )}
 
-      {/* Tag Modal */}
+      {/* Tag Modal — supports creating new tags by typing */}
       <Modal title="批量设置标签" open={tagModalVisible} onCancel={() => setTagModalVisible(false)}
-        onOk={() => {
+        onOk={async () => {
           if (selectedTagIds.length === 0) { message.warning('请选择至少一个标签'); return; }
-          bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'tag', tag_ids: selectedTagIds }).then(() => setTagModalVisible(false));
+          await bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'tag', tag_ids: selectedTagIds });
+          setTagModalVisible(false);
         }} okText="确定" cancelText="取消">
-        <Select mode="multiple" placeholder="选择要添加的标签" style={{ width: '100%' }} value={selectedTagIds}
-          onChange={setSelectedTagIds}
+        <Select mode="tags" placeholder="选择或输入新标签" style={{ width: '100%' }} value={selectedTagIds}
+          onChange={async (values: (number | string)[]) => {
+            const ids: number[] = [];
+            for (const v of values) {
+              if (typeof v === 'number') { ids.push(v); }
+              else {
+                // Create new tag
+                try {
+                  const res = await tagApi.create(v);
+                  ids.push(res.data.id);
+                  queryClient.invalidateQueries({ queryKey: ['tags'] });
+                } catch { message.error(`创建标签 "${v}" 失败`); }
+              }
+            }
+            setSelectedTagIds(ids);
+          }}
           options={(tagsData?.data || []).map((t: any) => ({ value: t.id, label: t.name }))} />
       </Modal>
 
-      {/* Group Modal */}
+      {/* Group Modal — supports creating new group by typing */}
       <Modal title="批量设置分组" open={groupModalVisible} onCancel={() => setGroupModalVisible(false)}
-        onOk={() => {
+        onOk={async () => {
           if (!selectedGroupId) { message.warning('请选择一个分组'); return; }
-          bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'group', group_id: selectedGroupId }).then(() => setGroupModalVisible(false));
+          await bulkMutation.mutateAsync({ domain_ids: selectedRowKeys, action: 'group', group_id: selectedGroupId });
+          setGroupModalVisible(false);
         }} okText="确定" cancelText="取消">
-        <Select placeholder="选择分组" style={{ width: '100%' }} value={selectedGroupId}
-          onChange={setSelectedGroupId}
-          options={(groupsData?.data || []).map((g: any) => ({ value: g.id, label: g.name }))} />
+        <Select showSearch placeholder="选择或输入新分组" style={{ width: '100%' }} value={selectedGroupId}
+          onChange={(v) => setSelectedGroupId(v)}
+          onSearch={() => {}}
+          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+          options={(groupsData?.data || []).map((g: any) => ({ value: g.id, label: g.name }))}
+          dropdownRender={(menu) => (
+            <>
+              {menu}
+              <div style={{ padding: '8px', borderTop: '1px solid #f0f0f0' }}>
+                <Input
+                  placeholder="输入新分组名称后回车创建"
+                  onPressEnter={async (e) => {
+                    const name = (e.target as HTMLInputElement).value.trim();
+                    if (!name) return;
+                    try {
+                      const res = await groupApi.create({ name });
+                      setSelectedGroupId(res.data.id);
+                      queryClient.invalidateQueries({ queryKey: ['groups'] });
+                      message.success(`分组 "${name}" 已创建`);
+                      (e.target as HTMLInputElement).value = '';
+                    } catch { message.error(`创建分组 "${name}" 失败`); }
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </>
+          )}
+        />
       </Modal>
 
       {/* Table */}
