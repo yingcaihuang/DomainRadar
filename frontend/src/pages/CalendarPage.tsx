@@ -79,6 +79,12 @@ export function CalendarPage() {
         <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>直观查看域名与证书的到期时间</p>
       </div>
 
+      <style>{`
+        .fc-daygrid-day-events { overflow: visible !important; }
+        .fc-daygrid-event-harness { visibility: visible !important; }
+        .fc-multimonth .fc-daygrid-more-link { display: none !important; }
+        .fc-popover { z-index: 9999 !important; }
+      `}</style>
       <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -108,7 +114,7 @@ export function CalendarPage() {
             height="auto"
             dayMaxEvents={100}
             dayMaxEventRows={100}
-            moreLinkClick="day"
+            moreLinkClick={(info) => { info.jsEvent.preventDefault(); }}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventContent={(arg) => {
