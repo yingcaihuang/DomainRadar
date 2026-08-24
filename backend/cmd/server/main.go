@@ -83,6 +83,7 @@ func main() {
 
 	// Seed default admin user if no users exist
 	seedDefaultAdmin(db, logger)
+	seedDefaultTagsAndGroups(db, logger)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(oidcProvider, sm, db, logger)
@@ -360,5 +361,28 @@ func seedDefaultAdmin(db *gorm.DB, logger *zap.Logger) {
 		zap.String("password", "admin123"),
 		zap.String("note", "Change this password on first login!"),
 	)
+}
+
+// seedDefaultTagsAndGroups creates default tags and groups if they don't exist.
+func seedDefaultTagsAndGroups(db *gorm.DB, logger *zap.Logger) {
+	// Default tags
+	defaultTags := []string{"不续费", "no-renew", "muted", "ignore", "AI"}
+	for _, name := range defaultTags {
+		tag := domain.Tag{Name: name}
+		if err := db.Where("name = ?", name).FirstOrCreate(&tag).Error; err != nil {
+			logger.Warn("Failed to seed tag", zap.String("name", name), zap.Error(err))
+		}
+	}
+
+	// Default groups
+	defaultGroups := []string{"MAP2.0", "AWS"}
+	for _, name := range defaultGroups {
+		group := domain.Group{Name: name, Level: 0}
+		if err := db.Where("name = ?", name).FirstOrCreate(&group).Error; err != nil {
+			logger.Warn("Failed to seed group", zap.String("name", name), zap.Error(err))
+		}
+	}
+
+	logger.Info("Default tags and groups seeded")
 }
 // Build trigger: 1787227235
