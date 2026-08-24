@@ -37,11 +37,16 @@ export function NotificationSettingsPage() {
 
   const testMutation = useMutation({
     mutationFn: notificationApi.channels.test,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['notification-channels'] });
-      message.success('Webhook 测试发送成功');
+      queryClient.invalidateQueries({ queryKey: ['channel-logs'] });
+      if (data.status === 'active') {
+        message.success('✅ 测试通过 — 通知已成功送达目标平台');
+      } else {
+        message.error(`❌ 测试失败: ${data.message}`);
+      }
     },
-    onError: (e: Error) => message.error(`测试失败: ${e.message}`),
+    onError: (e: Error) => message.error(`❌ 测试失败: ${e.message}`),
   });
 
   const deleteMutation = useMutation({

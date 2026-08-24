@@ -397,6 +397,14 @@ func (h *NotificationHandler) TestChannel(c *gin.Context) {
 			"status":         "error",
 			"last_tested_at": now,
 		})
+		// Record test failure in notification log
+		h.db.Create(&domain.NotificationLog{
+			AlertID:     0,
+			ChannelID:   channel.ID,
+			Status:      "failed",
+			ErrorReason: testErr.Error(),
+			CreatedAt:   now,
+		})
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "error",
 			"message": testErr.Error(),
@@ -409,6 +417,14 @@ func (h *NotificationHandler) TestChannel(c *gin.Context) {
 	h.db.Model(&channel).Updates(map[string]interface{}{
 		"status":         "active",
 		"last_tested_at": now,
+	})
+	// Record test success in notification log
+	h.db.Create(&domain.NotificationLog{
+		AlertID:   0,
+		ChannelID: channel.ID,
+		Status:    "sent",
+		SentAt:    &now,
+		CreatedAt: now,
 	})
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "active",
