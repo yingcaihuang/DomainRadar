@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"net/http"
 	"time"
 )
@@ -70,22 +71,24 @@ func (c *CNEAlarmChannel) Send(ctx context.Context, notification *Notification) 
 
 // mapAlertTypeLabel maps internal alert type to human-readable Chinese label.
 func mapAlertTypeLabel(alertType string) string {
-	switch alertType {
-	case "expiration", "domain_expired", "domain_expiring_7d", "domain_expiring_30d":
+	switch {
+	case alertType == "expiration" || alertType == "domain_expired" ||
+		alertType == "domain_expiring_7d" || alertType == "domain_expiring_30d":
 		return "域名到期告警"
-	case "certificate_error", "certificate_expired", "certificate_expiring":
+	case alertType == "certificate_error" || alertType == "certificate_expired" ||
+		alertType == "certificate_expiring":
 		return "证书告警"
-	case "whois_change":
+	case alertType == "whois_change":
 		return "WHOIS变更告警"
-	case "service_down":
+	case alertType == "service_down":
 		return "服务监控告警"
-	case "service_recovered":
+	case alertType == "service_recovered":
 		return "服务恢复通知"
-	case "email", "email_compliance":
+	case strings.HasPrefix(alertType, "email"):
 		return "邮件安全告警"
-	case "downtime":
+	case alertType == "downtime":
 		return "宕机告警"
-	case "test":
+	case alertType == "test":
 		return "连通性测试"
 	default:
 		return alertType
