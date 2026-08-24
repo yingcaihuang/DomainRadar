@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Spin, Tag, Card, Segmented, Tooltip } from 'antd';
+import { Spin, Tag, Card, Segmented, Popover } from 'antd';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import multiMonthPlugin from '@fullcalendar/multimonth';
@@ -106,7 +106,9 @@ export function CalendarPage() {
             duration={viewMode === 'quarter' ? { months: 3 } : undefined}
             events={events}
             height="auto"
-            dayMaxEvents={false}
+            dayMaxEvents={100}
+            dayMaxEventRows={100}
+            moreLinkClick="day"
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventContent={(arg) => {
@@ -121,7 +123,7 @@ export function CalendarPage() {
                 </div>
               );
               return (
-                <Tooltip title={tooltipContent} placement="top">
+                <Popover content={tooltipContent} placement="top" zIndex={9999} overlayStyle={{ maxWidth: 300 }}>
                   <div style={{
                     padding: '1px 4px',
                     fontSize: 11,
@@ -133,7 +135,7 @@ export function CalendarPage() {
                   }}>
                     {label}
                   </div>
-                </Tooltip>
+                </Popover>
               );
             }}
           />
