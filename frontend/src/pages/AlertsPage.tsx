@@ -15,11 +15,12 @@ const severityConfig: Record<string, { color: string; bg: string; border: string
 export function AlertsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [severity, setSeverity] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [alertType, setAlertType] = useState('');
 
-  const params: Record<string, string> = { page: String(page), page_size: '20' };
+  const params: Record<string, string> = { page: String(page), page_size: String(pageSize) };
   if (severity) params.severity = severity;
   if (alertType) params.alert_type = alertType;
 
@@ -191,8 +192,10 @@ export function AlertsPage() {
           pagination={{
             current: page,
             total: data?.total || 0,
-            pageSize: 20,
-            onChange: setPage,
+            pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['20', '50', '100'],
+            onChange: (p, ps) => { setPage(p); setPageSize(ps); },
             showTotal: (total) => `共 ${total} 条告警`,
           }}
         />
