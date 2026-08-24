@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Spin, Tag, Card, Segmented } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { Spin, Tag, Card, Segmented, Tooltip } from 'antd';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import multiMonthPlugin from '@fullcalendar/multimonth';
@@ -17,10 +18,11 @@ const severityColors: Record<string, string> = {
 type ViewMode = 'year' | 'quarter' | 'month';
 
 export function CalendarPage() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('year');
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>(() => {
     const now = new Date();
-    return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear()}-12-31` };
+    return { start: `${now.getFullYear()}-01-01`, end: `${now.getFullYear() + 1}-01-01` };
   });
   const calendarRef = useRef<any>(null);
 
@@ -37,14 +39,6 @@ export function CalendarPage() {
     extendedProps: entry,
   })) || [];
 
-  const getCalendarView = (mode: ViewMode) => {
-    switch (mode) {
-      case 'year': return 'multiMonthYear';
-      case 'quarter': return 'dayGridMonth'; // 3-month with duration
-      case 'month': return 'dayGridMonth';
-    }
-  };
-
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
     const api = calendarRef.current?.getApi();
@@ -55,7 +49,7 @@ export function CalendarPage() {
         api.changeView('multiMonthYear');
         break;
       case 'quarter':
-        api.changeView('dayGridMonth', { duration: { months: 3 } });
+        api.changeView('multiMonthYear', { multiMonthMaxColumns: 1, duration: { months: 3 } });
         break;
       case 'month':
         api.changeView('dayGridMonth');
@@ -67,6 +61,13 @@ export function CalendarPage() {
     const start = arg.start.toISOString().slice(0, 10);
     const end = arg.end.toISOString().slice(0, 10);
     setDateRange({ start, end });
+  };
+
+  const handleEventClick = (info: any) => {
+    const entry = info.event.extendedProps as CalendarEntry;
+    if (entry?.id) {
+      navigate(`/domains/${entry.id}`);
+    }
   };
 
   return (
@@ -100,15 +101,33 @@ export function CalendarPage() {
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin as any, multiMonthPlugin as any]}
-            initialView={getCalendarView(viewMode)}
+            initialView="multiMonthYear"
+            multiMonthMaxColumns={viewMode === 'quarter' ? 1 : 3}
+            duration={viewMode === 'quarter' ? { months: 3 } : undefined}
             events={events}
             height="auto"
             datesSet={handleDatesSet}
-            eventContent={(arg) => (
-              <div style={{ padding: '2px 4px', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                {arg.event.title}
-              </div>
-            )}
+            eventClick={handleEventClick}
+            eventContent={(arg) => {
+              const entry = arg.event.extendedProps as CalendarEntry;
+              const label = entry?.domain_name || arg.event.title;
+              const tip = `${entry?.domain_name || ''} - ${entry?.type === 'certificate' ? '证书' : '域名'}到期\n剩余: ${entry?.days_remaining < 0 ? '已过期' + Math.abs(entry?.days_remaining) + '天' : entry?.days_remaining + '天'}\n到期日: ${entry?.expiration_date || ''}`;
+              return (
+                <Tooltip title={tip} placement="top">
+                  <div style={{
+                    padding: '1px 4px',
+                    fontSize: 11,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                  }}>
+                    {label}
+                  </div>
+                </Tooltip>
+              );
+            }}
           />
         )}
       </Card>
