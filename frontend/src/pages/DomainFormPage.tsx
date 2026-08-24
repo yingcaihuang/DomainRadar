@@ -145,53 +145,42 @@ export function DomainFormPage() {
             </Form.Item>
           </Space>
 
-          <Form.Item name="tag_ids" label="标签（可输入新标签自动创建）">
-            <Select mode="tags" placeholder="选择或输入新标签"
-              options={tagsData?.data?.map(t => ({ value: t.id, label: t.name })) || []}
-              onChange={async (values: (number | string)[]) => {
-                const ids: number[] = [];
-                for (const v of values) {
-                  if (typeof v === 'number') { ids.push(v); }
-                  else {
-                    try {
-                      const res = await tagApi.create(v);
-                      ids.push(res.data.id);
-                      queryClient.invalidateQueries({ queryKey: ['tags'] });
-                    } catch { message.error(`创建标签 "${v}" 失败`); }
-                  }
-                }
-                form.setFieldValue('tag_ids', ids);
-              }}
-            />
+          <Form.Item name="tag_ids" label="标签">
+            <Select mode="multiple" placeholder="选择标签"
+              options={tagsData?.data?.map(t => ({ value: t.id, label: t.name })) || []} />
+          </Form.Item>
+          <Form.Item label="创建新标签">
+            <Input placeholder="输入新标签名称回车创建" onPressEnter={async (e) => {
+              const name = (e.target as HTMLInputElement).value.trim();
+              if (!name) return;
+              try {
+                const res = await tagApi.create(name);
+                const current = form.getFieldValue('tag_ids') || [];
+                form.setFieldValue('tag_ids', [...current, res.data.id]);
+                queryClient.invalidateQueries({ queryKey: ['tags'] });
+                message.success(`标签 "${name}" 已创建`);
+                (e.target as HTMLInputElement).value = '';
+              } catch { message.error(`创建标签 "${name}" 失败`); }
+            }} />
           </Form.Item>
 
-          <Form.Item name="group_id" label="分组（可输入新分组自动创建）">
-            <Select allowClear showSearch placeholder="选择或输入新分组"
-              options={groupsData?.data?.map((g: any) => ({ value: g.id, label: g.name })) || []}
+          <Form.Item name="group_id" label="分组">
+            <Select allowClear showSearch placeholder="选择分组"
               filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              dropdownRender={(menu) => (
-                <>
-                  {menu}
-                  <div style={{ padding: '8px', borderTop: '1px solid #f0f0f0' }}>
-                    <Input
-                      placeholder="输入新分组名称后回车创建"
-                      onPressEnter={async (e) => {
-                        const name = (e.target as HTMLInputElement).value.trim();
-                        if (!name) return;
-                        try {
-                          const res = await groupApi.create({ name });
-                          form.setFieldValue('group_id', res.data.id);
-                          queryClient.invalidateQueries({ queryKey: ['groups'] });
-                          message.success(`分组 "${name}" 已创建`);
-                          (e.target as HTMLInputElement).value = '';
-                        } catch { message.error(`创建分组 "${name}" 失败`); }
-                      }}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                </>
-              )}
-            />
+              options={groupsData?.data?.map((g: any) => ({ value: g.id, label: g.name })) || []} />
+          </Form.Item>
+          <Form.Item label="创建新分组">
+            <Input placeholder="输入新分组名称回车创建" onPressEnter={async (e) => {
+              const name = (e.target as HTMLInputElement).value.trim();
+              if (!name) return;
+              try {
+                const res = await groupApi.create({ name });
+                form.setFieldValue('group_id', res.data.id);
+                queryClient.invalidateQueries({ queryKey: ['groups'] });
+                message.success(`分组 "${name}" 已创建`);
+                (e.target as HTMLInputElement).value = '';
+              } catch { message.error(`创建分组 "${name}" 失败`); }
+            }} />
           </Form.Item>
 
           <Form.Item name="notes" label="Notes">
