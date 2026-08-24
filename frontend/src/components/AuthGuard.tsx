@@ -21,7 +21,7 @@ export function AuthGuard() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spin size="large" tip="Loading..." />
+        <Spin size="large" tip="Loading..."><div /></Spin>
       </div>
     );
   }
