@@ -141,13 +141,16 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 	if expDate, ok := updates["expiration_date"]; ok {
 		if d.ExpirationDate != nil {
 			newExp := expDate.(time.Time)
-			// Compare date part only — WHOIS and registrar APIs often return
-			// the same date with different time/timezone components
-			oldDate := d.ExpirationDate.Format("2006-01-02")
-			newDate := newExp.Format("2006-01-02")
-			if oldDate != newDate {
+			// Compare with 1-day tolerance — WHOIS and registrar APIs often
+			// represent the same expiration with different timezone offsets,
+			// causing ±1 day differences (e.g. GoDaddy UTC-7 vs WHOIS UTC)
+			diff := newExp.Sub(*d.ExpirationDate)
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff > 36*time.Hour { // more than 1.5 days = real change
 				changes = append(changes, fmt.Sprintf("到期日变更: %s → %s",
-					oldDate, newDate))
+					d.ExpirationDate.Format("2006-01-02"), newExp.Format("2006-01-02")))
 			}
 		}
 	}
