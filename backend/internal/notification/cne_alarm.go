@@ -60,12 +60,36 @@ func (c *CNEAlarmChannel) Send(ctx context.Context, notification *Notification) 
 		AlarmCode:     c.AlarmCode,
 		AlarmName:     notification.DomainName,
 		AlarmValue:    truncate(notification.Message, 255),
-		AlarmStatus:   mapSeverityToAlarmStatus(notification.Severity),
-		ExtensionInfo: truncate(notification.AlertType, 128),
+		AlarmStatus:   8, // 固定严重告警 2 级
+		ExtensionInfo: truncate(mapAlertTypeLabel(notification.AlertType), 128),
 		AlarmTime:     notification.TriggeredAt.Unix(),
 	}
 
 	return c.postAlarm(ctx, &payload)
+}
+
+// mapAlertTypeLabel maps internal alert type to human-readable Chinese label.
+func mapAlertTypeLabel(alertType string) string {
+	switch alertType {
+	case "expiration", "domain_expired", "domain_expiring_7d", "domain_expiring_30d":
+		return "域名到期告警"
+	case "certificate_error", "certificate_expired", "certificate_expiring":
+		return "证书告警"
+	case "whois_change":
+		return "WHOIS变更告警"
+	case "service_down":
+		return "服务监控告警"
+	case "service_recovered":
+		return "服务恢复通知"
+	case "email", "email_compliance":
+		return "邮件安全告警"
+	case "downtime":
+		return "宕机告警"
+	case "test":
+		return "连通性测试"
+	default:
+		return alertType
+	}
 }
 
 // TestConnection sends a test alarm to verify connectivity.
@@ -121,19 +145,7 @@ func (c *CNEAlarmChannel) postAlarm(ctx context.Context, payload *CNEAlarmPayloa
 	return nil
 }
 
-// mapSeverityToAlarmStatus maps DomainRadar severity to CNE alarmStatus.
-func mapSeverityToAlarmStatus(severity string) int {
-	switch severity {
-	case "critical", "expired":
-		return 8 // 严重告警 2 级
-	case "warning":
-		return 4 // 一般告警 3 级
-	case "informational":
-		return 2 // 告警 4 级
-	default:
-		return 4
-	}
-}
+
 
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
