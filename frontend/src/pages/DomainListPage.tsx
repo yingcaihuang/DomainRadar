@@ -33,6 +33,7 @@ export function DomainListPage() {
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('ascend');
   const [tagFilter, setTagFilter] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
+  const [monitorFilter, setMonitorFilter] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([]);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -47,6 +48,7 @@ export function DomainListPage() {
   if (registrarFilter) params.registrar_account_id = registrarFilter;
   if (tagFilter) params.tag_ids = tagFilter;
   if (groupFilter) params.group_id = groupFilter;
+  if (monitorFilter) params.monitor = monitorFilter;
   if (sortField) params.sort_by = sortField;
   if (sortOrder) params.sort_order = sortOrder === 'ascend' ? 'asc' : 'desc';
 
@@ -272,6 +274,15 @@ export function DomainListPage() {
           />
           <Select placeholder="分组" allowClear style={{ width: 150 }} onChange={(v) => { setGroupFilter(v ? String(v) : ''); setPage(1); }}
             options={(groupsData?.data || []).map((g: any) => ({ value: g.id, label: g.name }))}
+          />
+          <Select placeholder="监控类型" allowClear style={{ width: 150 }} onChange={(v) => { setMonitorFilter(v || ''); setPage(1); }}
+            options={[
+              { value: 'cert', label: '证书监控' },
+              { value: 'email', label: '邮件监控' },
+              { value: 'website', label: '网站监控' },
+              { value: 'whois', label: 'WHOIS' },
+              { value: 'service', label: '服务探针' },
+            ]}
           />
         </Space>
       </Card>

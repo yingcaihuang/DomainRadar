@@ -284,6 +284,22 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		query = query.Where("domain_name ILIKE ?", "%"+search+"%")
 	}
 
+	// Filter by monitoring type.
+	if monitor := c.Query("monitor"); monitor != "" {
+		switch monitor {
+		case "cert":
+			query = query.Where("id IN (SELECT domain_id FROM certificate_monitors WHERE enabled = true)")
+		case "email":
+			query = query.Where("id IN (SELECT domain_id FROM email_monitors WHERE enabled = true)")
+		case "website":
+			query = query.Where("website_url != '' AND website_url IS NOT NULL")
+		case "whois":
+			query = query.Where("whois_last_checked_at IS NOT NULL")
+		case "service":
+			query = query.Where("id IN (SELECT domain_id FROM service_monitors WHERE enabled = true)")
+		}
+	}
+
 	// Count total.
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
