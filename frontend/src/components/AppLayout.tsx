@@ -46,7 +46,7 @@ export function AppLayout() {
   // Alert count for bell notification
   const { data: alertData } = useQuery({
     queryKey: ['alert-count'],
-    queryFn: () => alertApi.list({ page: '1', page_size: '1' }),
+    queryFn: () => alertApi.list({ page: '1', page_size: '1', acknowledged: 'false' }),
     refetchInterval: 30000, // refresh every 30s
   });
   const alertCount = alertData?.total || 0;
