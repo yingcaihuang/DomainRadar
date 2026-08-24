@@ -70,8 +70,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       WHO_DAT_URL: http://who-dat:8080
       DOMAINRADAR_MASTER_KEY: ${DOMAINRADAR_MASTER_KEY:-changeme_generate_a_32byte_key!!}
-    expose:
-      - "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
     volumes:
       - app-logs:/app/logs
     healthcheck:
@@ -94,10 +94,7 @@ services:
   caddy:
     image: ghcr.io/yingcaihuang/domainradar-caddy:latest
     container_name: domainradar-caddy
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    network_mode: host
     environment:
       NO_PROXY: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
       no_proxy: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
@@ -109,8 +106,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - domainradar-net
 
 networks:
   domainradar-net:
