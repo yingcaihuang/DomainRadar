@@ -66,6 +66,7 @@ services:
     environment:
       NO_PROXY: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
       no_proxy: "localhost,127.0.0.1,::1,backend,who-dat,postgresql,redis,caddy,.local"
+      TZ: Asia/Shanghai
       GIN_MODE: release
       PORT: "8080"
       AUTO_MIGRATE: "true"
