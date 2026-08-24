@@ -41,15 +41,6 @@ func (d *AlertDispatcher) DispatchAlert(alert *domain.Alert) {
 		return
 	}
 
-	payload := &WebhookPayload{
-		AlertSeverity: alert.Severity,
-		AlertType:     alert.AlertType,
-		TriggeredAt:   alert.GeneratedAt,
-		DomainName:    domainObj.DomainName,
-		DomainURL:     "",
-		Message:       alert.Message,
-	}
-
 	for _, ch := range channels {
 		go func(channel domain.NotificationChannel) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -78,21 +69,50 @@ func (d *AlertDispatcher) DispatchAlert(alert *domain.Alert) {
 			}
 
 			notifChannel := factory(config)
-			// Type assert to get Send method
-			if wc, ok := notifChannel.(*WebhookChannel); ok {
-				if err := wc.postPayload(ctx, wc.TargetURL, wc.Headers, payload); err != nil {
-					d.logger.Error("Failed to send webhook notification",
-						zap.Uint("channel_id", channel.ID),
-						zap.String("alert_type", alert.AlertType),
-						zap.Error(err),
-					)
-				} else {
-					d.logger.Info("Webhook notification sent",
-						zap.Uint("channel_id", channel.ID),
-						zap.String("domain", domainObj.DomainName),
-						zap.String("alert_type", alert.AlertType),
-					)
-				}
+
+			// Build notification and send
+			notif := &Notification{
+				AlertID:     alert.ID,
+				Severity:    alert.Severity,
+				AlertType:   alert.AlertType,
+				DomainName:  domainObj.DomainName,
+				Message:     alert.Message,
+				TriggeredAt: alert.GeneratedAt,
+			}
+
+			sendErr := notifChannel.Send(ctx, notif)
+			now := time.Now()
+
+			if sendErr != nil {
+				d.logger.Error("Failed to send notification",
+					zap.Uint("channel_id", channel.ID),
+					zap.String("channel_type", channel.ChannelType),
+					zap.String("alert_type", alert.AlertType),
+					zap.Error(sendErr),
+				)
+				// Record failure
+				d.db.Create(&domain.NotificationLog{
+					AlertID:     alert.ID,
+					ChannelID:   channel.ID,
+					Status:      "failed",
+					ErrorReason: sendErr.Error(),
+					CreatedAt:   now,
+				})
+			} else {
+				d.logger.Info("Notification sent",
+					zap.Uint("channel_id", channel.ID),
+					zap.String("channel_type", channel.ChannelType),
+					zap.String("domain", domainObj.DomainName),
+					zap.String("alert_type", alert.AlertType),
+				)
+				// Record success
+				d.db.Create(&domain.NotificationLog{
+					AlertID:   alert.ID,
+					ChannelID: channel.ID,
+					Status:    "sent",
+					SentAt:    &now,
+					CreatedAt: now,
+				})
 			}
 		}(ch)
 	}
