@@ -106,14 +106,22 @@ export function CalendarPage() {
             duration={viewMode === 'quarter' ? { months: 3 } : undefined}
             events={events}
             height="auto"
+            dayMaxEvents={false}
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             eventContent={(arg) => {
               const entry = arg.event.extendedProps as CalendarEntry;
               const label = entry?.domain_name || arg.event.title;
-              const tip = `${entry?.domain_name || ''} - ${entry?.type === 'certificate' ? '证书' : '域名'}到期\n剩余: ${entry?.days_remaining < 0 ? '已过期' + Math.abs(entry?.days_remaining) + '天' : entry?.days_remaining + '天'}\n到期日: ${entry?.expiration_date || ''}`;
+              const tooltipContent = (
+                <div>
+                  <div style={{ fontWeight: 600 }}>{entry?.domain_name}</div>
+                  <div>类型: {entry?.type === 'certificate' ? '证书' : '域名'}</div>
+                  <div>剩余: {entry?.days_remaining < 0 ? '已过期 ' + Math.abs(entry?.days_remaining) + ' 天' : entry?.days_remaining + ' 天'}</div>
+                  <div>到期日: {entry?.expiration_date}</div>
+                </div>
+              );
               return (
-                <Tooltip title={tip} placement="top">
+                <Tooltip title={tooltipContent} placement="top">
                   <div style={{
                     padding: '1px 4px',
                     fontSize: 11,
