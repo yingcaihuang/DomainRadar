@@ -108,6 +108,7 @@ export function CalendarPage() {
             ref={calendarRef}
             plugins={[dayGridPlugin as any, multiMonthPlugin as any]}
             initialView="multiMonthYear"
+            initialDate={new Date()}
             multiMonthMaxColumns={viewMode === 'quarter' ? 1 : 3}
             duration={viewMode === 'quarter' ? { months: 3 } : undefined}
             events={events}
