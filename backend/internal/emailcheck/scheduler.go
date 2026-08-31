@@ -171,6 +171,14 @@ func (s *EmailScheduler) cleanupOldResults(ctx context.Context, monitorID uint) 
 func (s *EmailScheduler) maybeCreateAlert(ctx context.Context, monitor domain.EmailMonitor, report *EmailCheckReport, now time.Time) bool {
 	domainName := monitor.Domain.DomainName
 
+	// Skip alert if domain has a mute tag (e.g. "不续费")
+	var dom domain.NormalizedDomain
+	if s.db.WithContext(ctx).Preload("Tags").First(&dom, monitor.DomainID).Error == nil {
+		if domainHasMuteTag(dom.Tags) {
+			return false
+		}
+	}
+
 	// Load enabled rules from DB
 	var rules []domain.EmailAlertRule
 	s.db.WithContext(ctx).Where("enabled = ?", true).Find(&rules)
@@ -267,4 +275,19 @@ func splitSelectors(s string) []string {
 		}
 	}
 	return result
+}
+
+// muteTagNames are tag names that suppress alerts for a domain.
+var muteTagNames = []string{"不续费", "no-renew", "muted", "ignore"}
+
+// domainHasMuteTag checks if the domain has a tag that suppresses alerts.
+func domainHasMuteTag(tags []domain.Tag) bool {
+	for _, tag := range tags {
+		for _, mute := range muteTagNames {
+			if strings.EqualFold(tag.Name, mute) {
+				return true
+			}
+		}
+	}
+	return false
 }
