@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App, Tooltip } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined, SearchOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
 
-const { Search } = Input;
 
 // Mute tags get special colors to indicate alert suppression
 const muteTagColors: Record<string, string> = {
@@ -259,7 +258,9 @@ export function DomainListPage() {
       {/* Filters */}
       <Card style={{ borderRadius: 12, border: '1px solid #e5e7eb', marginBottom: 16 }} styles={{ body: { padding: '16px 20px' } }}>
         <Space wrap>
-          <Search placeholder="搜索域名..." onSearch={setSearch} allowClear style={{ width: 250 }} />
+          <Input placeholder="搜索域名..." prefix={<SearchOutlined style={{ color: '#9ca3af' }} />} allowClear style={{ width: 250 }}
+            onChange={(e) => { if (!e.target.value) setSearch(''); }}
+            onPressEnter={(e) => setSearch((e.target as HTMLInputElement).value)} />
           <Select placeholder="状态" allowClear style={{ width: 130 }} onChange={(v) => { setStatusFilter(v || ''); setPage(1); }}
             options={[
               { value: 'active', label: '正常' },
