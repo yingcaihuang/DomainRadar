@@ -64,8 +64,8 @@ func NewWebsiteMonitor(db *gorm.DB, logger *zap.Logger) *WebsiteMonitor {
 			Timeout: ConnectionTimeout,
 		}).DialContext,
 		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout:  ConnectionTimeout,
-		DisableKeepAlives:      true,
+		ResponseHeaderTimeout: ConnectionTimeout,
+		DisableKeepAlives:     true,
 	}
 
 	client := &http.Client{

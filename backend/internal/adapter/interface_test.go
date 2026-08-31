@@ -111,13 +111,13 @@ func TestAdapterRegistry_ListTypes_Empty(t *testing.T) {
 
 func TestRegistrarCredential_Fields(t *testing.T) {
 	cred := &RegistrarCredential{
-		APIKey:         "key123",
-		APISecret:      "secret456",
-		Token:          "tok789",
-		Username:       "user",
-		AccessKeyID:    "AKID",
+		APIKey:          "key123",
+		APISecret:       "secret456",
+		Token:           "tok789",
+		Username:        "user",
+		AccessKeyID:     "AKID",
 		SecretAccessKey: "SAK",
-		IPWhitelist:    "1.2.3.4",
+		IPWhitelist:     "1.2.3.4",
 		Extra: map[string]string{
 			"custom_field": "custom_value",
 		},

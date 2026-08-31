@@ -23,8 +23,8 @@ func TestProperty20_WhoDatCircuitBreakerStateTransitions(t *testing.T) {
 		// Generate a random sequence of operations: true = success, false = failure
 		// Also generate time advances to test cooldown behavior
 		type op struct {
-			isSuccess    bool
-			advanceSecs  int // time to advance before this operation
+			isSuccess   bool
+			advanceSecs int // time to advance before this operation
 		}
 
 		seqLen := rapid.IntRange(1, 50).Draw(t, "seqLen")

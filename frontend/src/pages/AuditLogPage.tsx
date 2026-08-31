@@ -37,6 +37,7 @@ export function AuditLogPage() {
         try {
           const str = typeof f === "string" ? f : JSON.stringify(f); return str?.slice(0, 100) || "-";
         } catch {
+          return "-";
         }
       },
     },

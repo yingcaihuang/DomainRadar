@@ -39,17 +39,17 @@ type alertListResponse struct {
 
 // alertResponse represents a single alert in API responses.
 type alertResponse struct {
-	ID             uint        `json:"id"`
-	DomainID       uint        `json:"domain_id"`
-	DomainName     string      `json:"domain_name,omitempty"`
-	AlertType      string      `json:"alert_type"`
-	Severity       string      `json:"severity"`
-	Message        string      `json:"message"`
-	DaysRemaining  *int        `json:"days_remaining"`
-	Acknowledged   bool        `json:"acknowledged"`
-	DeliveryStatus string      `json:"delivery_status"`
-	GeneratedAt    string      `json:"generated_at"`
-	AcknowledgedAt *string     `json:"acknowledged_at"`
+	ID             uint    `json:"id"`
+	DomainID       uint    `json:"domain_id"`
+	DomainName     string  `json:"domain_name,omitempty"`
+	AlertType      string  `json:"alert_type"`
+	Severity       string  `json:"severity"`
+	Message        string  `json:"message"`
+	DaysRemaining  *int    `json:"days_remaining"`
+	Acknowledged   bool    `json:"acknowledged"`
+	DeliveryStatus string  `json:"delivery_status"`
+	GeneratedAt    string  `json:"generated_at"`
+	AcknowledgedAt *string `json:"acknowledged_at"`
 }
 
 // HandleListAlerts lists alerts with filtering and pagination.

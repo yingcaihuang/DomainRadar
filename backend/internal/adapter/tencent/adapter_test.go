@@ -36,7 +36,7 @@ func TestTestConnection_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-secret-id",
+		AccessKeyID:     "test-secret-id",
 		SecretAccessKey: "test-secret-key",
 	}
 
@@ -68,7 +68,7 @@ func TestTestConnection_APIError(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "bad-id",
+		AccessKeyID:     "bad-id",
 		SecretAccessKey: "bad-key",
 	}
 
@@ -86,7 +86,7 @@ func TestTestConnection_HTTPError(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-id",
+		AccessKeyID:     "test-id",
 		SecretAccessKey: "test-key",
 	}
 
@@ -123,7 +123,7 @@ func TestListDomains_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-secret-id",
+		AccessKeyID:     "test-secret-id",
 		SecretAccessKey: "test-secret-key",
 	}
 
@@ -185,7 +185,7 @@ func TestListDomains_Pagination(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-id",
+		AccessKeyID:     "test-id",
 		SecretAccessKey: "test-key",
 	}
 
@@ -210,7 +210,7 @@ func TestListDomains_APIError(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-id",
+		AccessKeyID:     "test-id",
 		SecretAccessKey: "test-key",
 	}
 
@@ -241,7 +241,7 @@ func TestGetDomainDetail_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-id",
+		AccessKeyID:     "test-id",
 		SecretAccessKey: "test-key",
 	}
 
@@ -275,7 +275,7 @@ func TestGetDomainDetail_APIError(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-id",
+		AccessKeyID:     "test-id",
 		SecretAccessKey: "test-key",
 	}
 
@@ -299,7 +299,7 @@ func TestCredentialExtraction_ExtraFields(t *testing.T) {
 
 func TestCredentialExtraction_StandardFields(t *testing.T) {
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "standard-id",
+		AccessKeyID:     "standard-id",
 		SecretAccessKey: "standard-key",
 	}
 
@@ -309,7 +309,7 @@ func TestCredentialExtraction_StandardFields(t *testing.T) {
 
 func TestCredentialExtraction_ExtraTakesPriority(t *testing.T) {
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "standard-id",
+		AccessKeyID:     "standard-id",
 		SecretAccessKey: "standard-key",
 		Extra: map[string]string{
 			"secret_id": "extra-id",
@@ -385,7 +385,7 @@ func TestSignatureHeaders(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "AKID12345",
+		AccessKeyID:     "AKID12345",
 		SecretAccessKey: "secret12345",
 	}
 

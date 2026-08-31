@@ -21,7 +21,7 @@ type DiscrepancyResult struct {
 	HasDiscrepancy  bool       `json:"has_discrepancy"`
 	ManualExpiry    *time.Time `json:"manual_expiry,omitempty"`
 	WhoisExpiry     *time.Time `json:"whois_expiry,omitempty"`
-	DifferenceHours float64   `json:"difference_hours"`
+	DifferenceHours float64    `json:"difference_hours"`
 }
 
 // DetectDiscrepancy compares a manual expiration date against a WHOIS expiration date.

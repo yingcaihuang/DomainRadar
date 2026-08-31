@@ -300,19 +300,19 @@ type namecheapDomain struct {
 
 // domainGetInfoResult represents the parsed CommandResponse for namecheap.domains.getInfo.
 type domainGetInfoResult struct {
-	XMLName       xml.Name        `xml:"DomainGetInfoResult"`
-	Status        string          `xml:"Status,attr"`
-	DomainName    string          `xml:"DomainName,attr"`
-	ID            string          `xml:"ID,attr"`
-	DomainDetails domainDetails   `xml:"DomainDetails"`
-	DNSDetails    dnsDetails      `xml:"DnsDetails"`
-	WhoisGuard    whoisGuardInfo  `xml:"Whoisguard"`
+	XMLName       xml.Name       `xml:"DomainGetInfoResult"`
+	Status        string         `xml:"Status,attr"`
+	DomainName    string         `xml:"DomainName,attr"`
+	ID            string         `xml:"ID,attr"`
+	DomainDetails domainDetails  `xml:"DomainDetails"`
+	DNSDetails    dnsDetails     `xml:"DnsDetails"`
+	WhoisGuard    whoisGuardInfo `xml:"Whoisguard"`
 }
 
 type domainDetails struct {
-	CreatedDate  string `xml:"CreatedDate"`
-	ExpiredDate  string `xml:"ExpiredDate"`
-	NumYears     int    `xml:"NumYears"`
+	CreatedDate string `xml:"CreatedDate"`
+	ExpiredDate string `xml:"ExpiredDate"`
+	NumYears    int    `xml:"NumYears"`
 }
 
 type dnsDetails struct {

@@ -45,14 +45,14 @@ type userListResponse struct {
 
 // userResponse represents a single user in API responses.
 type userResponse struct {
-	ID          uint       `json:"id"`
-	ExternalID  string     `json:"external_id"`
-	Email       string     `json:"email"`
-	DisplayName string     `json:"display_name"`
-	AuthSource  string     `json:"auth_source"`
-	Roles       []string   `json:"roles"`
-	LastLoginAt *string    `json:"last_login_at"`
-	CreatedAt   string     `json:"created_at"`
+	ID          uint     `json:"id"`
+	ExternalID  string   `json:"external_id"`
+	Email       string   `json:"email"`
+	DisplayName string   `json:"display_name"`
+	AuthSource  string   `json:"auth_source"`
+	Roles       []string `json:"roles"`
+	LastLoginAt *string  `json:"last_login_at"`
+	CreatedAt   string   `json:"created_at"`
 }
 
 // updateRolesRequest is the request body for updating user roles.

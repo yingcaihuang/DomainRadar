@@ -18,6 +18,7 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/time v0.15.0
 	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.2
 	pgregory.net/rapid v1.3.0
 )
@@ -76,5 +77,4 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/sqlite v1.6.0 // indirect
 )

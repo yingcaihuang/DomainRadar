@@ -288,7 +288,7 @@ type whoDatPublicID struct {
 }
 
 type whoDatNameserver struct {
-	LDHName    string `json:"ldhName"`
+	LDHName     string `json:"ldhName"`
 	ObjectClass string `json:"objectClassName"`
 }
 

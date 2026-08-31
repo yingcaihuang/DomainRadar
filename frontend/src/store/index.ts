@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { user } = get();
     if (!user) return false;
     const roles = user.roles || [];
-    
+
     const permissionMatrix: Record<string, string[]> = {
       view_domains: ['viewer', 'operator', 'admin'],
       manage_domains: ['operator', 'admin'],

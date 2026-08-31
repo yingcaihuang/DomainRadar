@@ -131,7 +131,7 @@ whois 信息，有收费接口吗，我执行whois 命令放队列获取可行�
 
 **补充**：对于到期时间监控，其实不需要每天都查——可以按到期剩余天数分级：
 - 剩 >90天 → 每周查一次
-- 剩 30-90天 → 每天查一次  
+- 剩 30-90天 → 每天查一次
 - 剩 <30天 → 每12小时查一次
 
 这样能大幅减少查询压力。
@@ -510,7 +510,7 @@ for d in domains:
 >   ...DIATE_THEN_ADD", "PENDING_EPP_CREATE", "PENDING_EPP_DELETE", "PENDING_EPP_UPDATE", "PENDING_ESCALATION_REGISTR...
 >   ...LED_COO", "PENDING_FAILED_EPP_CREATE", "PENDING_FAILED_HELD", "PENDING_FAILED_PURCHASE_PREMIUM", "PENDING_FAIL...
 >   ...ION_MOCK", "PENDING_RETRY_EPP_CREATE", "PENDING_RETRY_HELD", "PENDING_SEND_AUTH_CODE", "PENDING_SETUP", "PENDI...
-> 
+>
 > === Pattern: 'regist' ===
 >   ...omain Settings" }, { "name": "Register and Renew Domains" }, { "name": "Manage DNS" },...
 > ```
@@ -534,7 +534,7 @@ for d in domains:
 > **Tool call:** `run_python`
 > ```
 > Content length: 30191
-> 
+>
 > Last 500 chars:
 > schemas/Error" } }, "text/xml": { "schema": { "$ref": "#/components/schemas/Error" } } } } }, "description": "All contacts specified in request will be validated against all domains specified in \"domains\". As an alternative, you can also pass in tlds, with the exception of `uk`, which requires full domain names", "operationId": "ContactsValidate", "summary": "Validate the request body using the Domain Contact Validation Schema for specified domains." } },...
 > ```

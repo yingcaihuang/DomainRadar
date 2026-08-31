@@ -37,14 +37,14 @@ type EmailCheckReport struct {
 
 // EmailCheckDetails contains detailed findings for each check category.
 type EmailCheckDetails struct {
-	MX      CheckDetail `json:"mx"`
-	SPF     CheckDetail `json:"spf"`
-	DKIM    CheckDetail `json:"dkim"`
-	DMARC   CheckDetail `json:"dmarc"`
-	PTR     CheckDetail `json:"ptr"`
-	MTASTS  CheckDetail `json:"mta_sts"`
+	MX     CheckDetail `json:"mx"`
+	SPF    CheckDetail `json:"spf"`
+	DKIM   CheckDetail `json:"dkim"`
+	DMARC  CheckDetail `json:"dmarc"`
+	PTR    CheckDetail `json:"ptr"`
+	MTASTS CheckDetail `json:"mta_sts"`
 	TLSRPT CheckDetail `json:"tlsrpt"`
-	BIMI    CheckDetail `json:"bimi"`
+	BIMI   CheckDetail `json:"bimi"`
 }
 
 // CheckDetail holds the score and findings for a single check category.
@@ -293,10 +293,10 @@ func checkDKIM(ctx context.Context, res resolver, domain string, selectors []str
 		selectors = []string{
 			"google", "default", "selector1", "selector2",
 			"k1", "k2", "s1", "s2", "dkim", "mail",
-			"cf2024-1", "cf2024-2", "cf2023-1", "cf2023-2",  // Cloudflare
-			"protonmail", "protonmail2", "protonmail3",         // ProtonMail
-			"mxvault",                                          // MXRoute
-			"mandrill", "everlytickey1", "smtp",                // Transactional
+			"cf2024-1", "cf2024-2", "cf2023-1", "cf2023-2", // Cloudflare
+			"protonmail", "protonmail2", "protonmail3", // ProtonMail
+			"mxvault",                           // MXRoute
+			"mandrill", "everlytickey1", "smtp", // Transactional
 		}
 	}
 

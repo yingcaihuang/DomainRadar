@@ -3,10 +3,10 @@ package domainmgmt
 import (
 	"encoding/csv"
 	"encoding/json"
-	"os"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -108,39 +108,39 @@ type DomainListResponse struct {
 }
 
 type DomainResponse struct {
-	ID                      uint            `json:"id"`
-	DomainName              string          `json:"domain_name"`
-	RegistrarAccountID      *uint           `json:"registrar_account_id"`
-	RegistrarIdentifier     string          `json:"registrar_identifier"`
-	CreationDate            *time.Time      `json:"creation_date"`
-	ExpirationDate          *time.Time      `json:"expiration_date"`
-	AutoRenew               bool            `json:"auto_renew"`
-	RenewalDeadline         *time.Time      `json:"renewal_deadline"`
-	Status                  string          `json:"status"`
-	Nameservers             []string        `json:"nameservers"`
-	PrivacyProtection       bool            `json:"privacy_protection"`
-	LockStatus              bool            `json:"lock_status"`
-	DataSourceType          string          `json:"data_source_type"`
-	LastSyncAt              *time.Time      `json:"last_sync_at"`
-	GroupID                 *uint           `json:"group_id"`
-	Notes                   string          `json:"notes"`
-	WebsiteURL              string          `json:"website_url"`
-	EmailEnabled            bool            `json:"email_enabled"`
-	HealthScore             int             `json:"health_score"`
-	CheckIntervalMinutes    int             `json:"check_interval_minutes"`
-	ResponseTimeThresholdMs int             `json:"response_time_threshold_ms"`
-	Tags                    []TagResponse   `json:"tags"`
-	Group                   *GroupResponse  `json:"group,omitempty"`
-	CertMonitorEnabled      bool            `json:"cert_monitor_enabled"`
-	CertDaysRemaining       *int            `json:"cert_days_remaining,omitempty"`
-	EmailMonitorEnabled     bool            `json:"email_monitor_enabled"`
-	EmailScore              *int            `json:"email_score,omitempty"`
-	WhoisChecked            bool            `json:"whois_checked"`
-	WhoisLastCheckedAt      *time.Time      `json:"whois_last_checked_at,omitempty"`
-	ServiceMonitorEnabled   bool            `json:"service_monitor_enabled"`
-	ServiceUptimePercent    *float64        `json:"service_uptime_percent,omitempty"`
-	CreatedAt               time.Time       `json:"created_at"`
-	UpdatedAt               time.Time       `json:"updated_at"`
+	ID                      uint           `json:"id"`
+	DomainName              string         `json:"domain_name"`
+	RegistrarAccountID      *uint          `json:"registrar_account_id"`
+	RegistrarIdentifier     string         `json:"registrar_identifier"`
+	CreationDate            *time.Time     `json:"creation_date"`
+	ExpirationDate          *time.Time     `json:"expiration_date"`
+	AutoRenew               bool           `json:"auto_renew"`
+	RenewalDeadline         *time.Time     `json:"renewal_deadline"`
+	Status                  string         `json:"status"`
+	Nameservers             []string       `json:"nameservers"`
+	PrivacyProtection       bool           `json:"privacy_protection"`
+	LockStatus              bool           `json:"lock_status"`
+	DataSourceType          string         `json:"data_source_type"`
+	LastSyncAt              *time.Time     `json:"last_sync_at"`
+	GroupID                 *uint          `json:"group_id"`
+	Notes                   string         `json:"notes"`
+	WebsiteURL              string         `json:"website_url"`
+	EmailEnabled            bool           `json:"email_enabled"`
+	HealthScore             int            `json:"health_score"`
+	CheckIntervalMinutes    int            `json:"check_interval_minutes"`
+	ResponseTimeThresholdMs int            `json:"response_time_threshold_ms"`
+	Tags                    []TagResponse  `json:"tags"`
+	Group                   *GroupResponse `json:"group,omitempty"`
+	CertMonitorEnabled      bool           `json:"cert_monitor_enabled"`
+	CertDaysRemaining       *int           `json:"cert_days_remaining,omitempty"`
+	EmailMonitorEnabled     bool           `json:"email_monitor_enabled"`
+	EmailScore              *int           `json:"email_score,omitempty"`
+	WhoisChecked            bool           `json:"whois_checked"`
+	WhoisLastCheckedAt      *time.Time     `json:"whois_last_checked_at,omitempty"`
+	ServiceMonitorEnabled   bool           `json:"service_monitor_enabled"`
+	ServiceUptimePercent    *float64       `json:"service_uptime_percent,omitempty"`
+	CreatedAt               time.Time      `json:"created_at"`
+	UpdatedAt               time.Time      `json:"updated_at"`
 }
 
 type TagResponse struct {

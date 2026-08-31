@@ -13,8 +13,6 @@ export function SsoConfigPage() {
   const [discovering, setDiscovering] = useState(false);
   const [config, setConfig] = useState<any>(null);
 
-  useEffect(() => { loadConfig(); }, []);
-
   const loadConfig = async () => {
     setLoading(true);
     try {
@@ -41,6 +39,9 @@ export function SsoConfigPage() {
     } catch { message.error('加载SSO配置失败'); }
     setLoading(false);
   };
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { loadConfig(); }, []);
 
   const handleDiscover = async () => {
     const issuerUrl = form.getFieldValue('issuer_url');

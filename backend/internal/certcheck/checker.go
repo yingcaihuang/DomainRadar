@@ -35,13 +35,13 @@ type CertResult struct {
 	Error         string
 
 	// Connection details
-	ConnectedIP   string        // The IP address connected to
-	SNI           string        // The SNI hostname sent
-	DNSResolveMs  int64         // DNS resolution time in ms
-	HandshakeMs   int64         // TLS handshake time in ms
-	TotalMs       int64         // Total connection time in ms
-	TLSVersion    string        // TLS version negotiated
-	CipherSuite   string        // Cipher suite negotiated
+	ConnectedIP  string // The IP address connected to
+	SNI          string // The SNI hostname sent
+	DNSResolveMs int64  // DNS resolution time in ms
+	HandshakeMs  int64  // TLS handshake time in ms
+	TotalMs      int64  // Total connection time in ms
+	TLSVersion   string // TLS version negotiated
+	CipherSuite  string // Cipher suite negotiated
 }
 
 // CheckEndpoint connects to the given endpoint via TLS and inspects the certificate.

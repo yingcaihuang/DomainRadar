@@ -125,7 +125,7 @@ export function CalendarPage() {
             initialView="multiMonthYear"
             initialDate={new Date()}
             multiMonthMaxColumns={3}
-            
+
             events={events}
             height="auto"
             dayMaxEvents={100}

@@ -18,5 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // 存量代码大量使用 any，降为 warning 便于渐进式改进
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
   },
 ])

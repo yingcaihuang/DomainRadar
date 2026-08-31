@@ -1,0 +1,109 @@
+# Pre-commit hooks — multi-language ready.
+#
+# Language-specific hooks are scoped with `files:` regexes, so a hook only runs
+# when files of that language are staged. Rust/Go/Node hooks invoke local
+# toolchains (language: system), so they require the corresponding tool to be
+# installed on your machine (rustfmt/clippy, gofmt/go, node/npm). If the tool is
+# missing, install it or remove that hook.
+#
+# Setup:  pre-commit install && pre-commit install --hook-type commit-msg
+# Run all: pre-commit run --all-files
+#
+# NOTE: adjust the `files:` path prefixes below (e.g. the ESLint hook) to match
+# your repository layout. See references/hooks-reference.md in this skill.
+
+repos:
+  # ---------------------------------------------------------------------------
+  # General file checks (all languages)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-json
+        exclude: tsconfig.*\.json$
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # ---------------------------------------------------------------------------
+  # Python — Ruff (lint + format)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: \.py$
+      - id: ruff-format
+        files: \.py$
+
+  # ---------------------------------------------------------------------------
+  # Node.js / TypeScript / JavaScript — local ESLint
+  # Uses the project's own eslint config & dependencies.
+  # Adjust FRONTEND_DIR in scripts/eslint-staged.sh and the `files:` prefix here
+  # to match where your frontend lives (default: "frontend/").
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: scripts/eslint-staged.sh
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        exclude: (node_modules|dist)/
+        require_serial: true
+
+  # ---------------------------------------------------------------------------
+  # Rust — rustfmt + clippy (requires local Rust toolchain)
+  # Runs only when .rs files are staged. Remove if you don't use Rust.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: rustfmt
+        entry: rustfmt --edition 2021
+        language: system
+        files: \.rs$
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: bash -c 'cargo clippy --all-targets --all-features -- -D warnings'
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        require_serial: true
+
+  # ---------------------------------------------------------------------------
+  # Go — gofmt + go vet (requires local Go toolchain)
+  # Runs only when .go files are staged. Remove if you don't use Go.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt -w -l
+        language: system
+        files: \.go$
+      - id: go-vet
+        name: go vet
+        entry: bash -c 'cd backend && go build -mod=mod ./...'
+        language: system
+        files: \.go$
+        pass_filenames: false
+        require_serial: true
+
+  # ---------------------------------------------------------------------------
+  # Commit message linting (Conventional Commits)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]

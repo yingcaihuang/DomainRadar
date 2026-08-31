@@ -70,8 +70,8 @@ func TestMaskSensitiveFields_SecretMasked(t *testing.T) {
 
 func TestMaskSensitiveFields_KeyMasked(t *testing.T) {
 	fields := map[string]interface{}{
-		"api_key":     "key-value-here",
-		"access_key":  "AKIAIOSFODNN7EXAMPLE",
+		"api_key":      "key-value-here",
+		"access_key":   "AKIAIOSFODNN7EXAMPLE",
 		"display_name": "Test Account",
 	}
 
@@ -98,9 +98,9 @@ func TestMaskSensitiveFields_TokenMasked(t *testing.T) {
 
 func TestMaskSensitiveFields_CredentialMasked(t *testing.T) {
 	fields := map[string]interface{}{
-		"credentials":        `{"user": "test", "pass": "abc"}`,
-		"credential_data":    "encrypted-blob",
-		"registrar_type":     "godaddy",
+		"credentials":     `{"user": "test", "pass": "abc"}`,
+		"credential_data": "encrypted-blob",
+		"registrar_type":  "godaddy",
 	}
 
 	result := maskSensitiveFields(fields)

@@ -23,8 +23,8 @@ type SSOConfigHandler struct {
 	Logger *zap.Logger
 
 	// mu protects the live OIDC provider reference for runtime re-initialization.
-	mu           sync.RWMutex
-	authHandler  *AuthHandler
+	mu          sync.RWMutex
+	authHandler *AuthHandler
 }
 
 // NewSSOConfigHandler creates a new SSOConfigHandler.
@@ -195,7 +195,7 @@ func (h *SSOConfigHandler) HandleUpdateSSOConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "SSO configuration saved",
-		"data": toSSOConfigResponse(config),
+		"data":    toSSOConfigResponse(config),
 	})
 }
 

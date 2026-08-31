@@ -22,8 +22,8 @@ const (
 	TwelveHInterval = 12 * time.Hour  // <30 days until expiry
 
 	// Override clamping bounds.
-	MinInterval = 1 * time.Hour       // minimum allowed sync interval
-	MaxInterval = 720 * time.Hour     // maximum allowed sync interval (30 days)
+	MinInterval = 1 * time.Hour   // minimum allowed sync interval
+	MaxInterval = 720 * time.Hour // maximum allowed sync interval (30 days)
 
 	// Maximum duration for a single sync cycle before abort.
 	MaxCycleDuration = 10 * time.Minute

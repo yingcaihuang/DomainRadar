@@ -605,13 +605,13 @@ func (h *RegistrarHandler) decryptCredentials(encrypted string) (*RegistrarCrede
 	}
 
 	cred := &RegistrarCredential{
-		APIKey:         credsMap["api_key"],
-		APISecret:      credsMap["api_secret"],
-		Token:          credsMap["token"],
-		Username:       credsMap["username"],
-		AccessKeyID:    credsMap["access_key_id"],
+		APIKey:          credsMap["api_key"],
+		APISecret:       credsMap["api_secret"],
+		Token:           credsMap["token"],
+		Username:        credsMap["username"],
+		AccessKeyID:     credsMap["access_key_id"],
 		SecretAccessKey: credsMap["secret_access_key"],
-		IPWhitelist:    credsMap["ip_whitelist"],
+		IPWhitelist:     credsMap["ip_whitelist"],
 	}
 
 	// Put any extra fields into the Extra map

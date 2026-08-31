@@ -26,11 +26,11 @@ func TestListDomains_Success(t *testing.T) {
 		assert.Equal(t, apiVersion, r.URL.Query().Get("Version"))
 
 		resp := queryDomainListResponse{
-			RequestID:    "test-request-id",
-			TotalItemNum: 2,
+			RequestID:      "test-request-id",
+			TotalItemNum:   2,
 			CurrentPageNum: 1,
-			TotalPageNum: 1,
-			PageSize:     100,
+			TotalPageNum:   1,
+			PageSize:       100,
 			Data: domainListData{
 				Domain: []domainItem{
 					{
@@ -55,7 +55,7 @@ func TestListDomains_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 
@@ -83,11 +83,11 @@ func TestListDomains_Pagination(t *testing.T) {
 		var resp queryDomainListResponse
 		if page == 1 {
 			resp = queryDomainListResponse{
-				RequestID:    "req-page-1",
-				TotalItemNum: 3,
+				RequestID:      "req-page-1",
+				TotalItemNum:   3,
 				CurrentPageNum: 1,
-				TotalPageNum: 2,
-				PageSize:     2,
+				TotalPageNum:   2,
+				PageSize:       2,
 				Data: domainListData{
 					Domain: []domainItem{
 						{DomainName: "a.com", ExpirationDate: "2025-01-01 00:00:00", DomainStatus: "1"},
@@ -97,11 +97,11 @@ func TestListDomains_Pagination(t *testing.T) {
 			}
 		} else {
 			resp = queryDomainListResponse{
-				RequestID:    "req-page-2",
-				TotalItemNum: 3,
+				RequestID:      "req-page-2",
+				TotalItemNum:   3,
 				CurrentPageNum: 2,
-				TotalPageNum: 2,
-				PageSize:     2,
+				TotalPageNum:   2,
+				PageSize:       2,
 				Data: domainListData{
 					Domain: []domainItem{
 						{DomainName: "c.com", ExpirationDate: "2025-03-01 00:00:00", DomainStatus: "1"},
@@ -118,7 +118,7 @@ func TestListDomains_Pagination(t *testing.T) {
 	// but TotalItemNum controls when to stop.
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 
@@ -146,7 +146,7 @@ func TestListDomains_APIError(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "bad-key",
+		AccessKeyID:     "bad-key",
 		SecretAccessKey: "bad-secret",
 	}
 
@@ -178,7 +178,7 @@ func TestGetDomainDetail_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 
@@ -218,7 +218,7 @@ func TestGetDomainDetail_NoDnsList(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 
@@ -248,7 +248,7 @@ func TestTestConnection_Success(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 
@@ -269,7 +269,7 @@ func TestTestConnection_Failure(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "bad-key",
+		AccessKeyID:     "bad-key",
 		SecretAccessKey: "bad-secret",
 	}
 
@@ -383,9 +383,9 @@ func TestPercentEncode(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"hello world", "hello%20world"},    // space encoded as %20, not +
-		{"test*value", "test%2Avalue"},      // * encoded as %2A
-		{"hello~world", "hello~world"},       // ~ not encoded
+		{"hello world", "hello%20world"}, // space encoded as %20, not +
+		{"test*value", "test%2Avalue"},   // * encoded as %2A
+		{"hello~world", "hello~world"},   // ~ not encoded
 		{"simple", "simple"},
 		{"2024-01-15T10:30:00Z", "2024-01-15T10%3A30%3A00Z"},
 	}
@@ -413,7 +413,7 @@ func TestListDomains_EmptyResponse(t *testing.T) {
 
 	a := NewWithHTTPClient(server.URL, server.Client())
 	cred := &adapter.RegistrarCredential{
-		AccessKeyID:    "test-key-id",
+		AccessKeyID:     "test-key-id",
 		SecretAccessKey: "test-secret",
 	}
 

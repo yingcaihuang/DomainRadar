@@ -3,8 +3,8 @@ package alert
 import (
 	"context"
 	"fmt"
-	"strings"
 	"math"
+	"strings"
 	"time"
 
 	"domainradar/internal/domain"
@@ -87,13 +87,13 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 		if result.Error == gorm.ErrRecordNotFound {
 			// Create new alert
 			alert := domain.Alert{
-				DomainID:     d.ID,
-				AlertType:    alertType,
-				Severity:     severity,
-				Message:      formatAlertMessage(d.DomainName, daysRemaining),
+				DomainID:      d.ID,
+				AlertType:     alertType,
+				Severity:      severity,
+				Message:       formatAlertMessage(d.DomainName, daysRemaining),
 				DaysRemaining: &daysRemaining,
-				Acknowledged: false,
-				GeneratedAt:  now,
+				Acknowledged:  false,
+				GeneratedAt:   now,
 			}
 			if err := s.db.WithContext(ctx).Create(&alert).Error; err != nil {
 				s.logger.Error("failed to create alert", zap.String("domain", d.DomainName), zap.Error(err))

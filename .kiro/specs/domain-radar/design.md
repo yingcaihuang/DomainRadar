@@ -75,7 +75,7 @@ graph LR
     subgraph Backend["Backend Service"]
         API["REST API Layer\n(Gin Router)"]
         Auth["Auth Middleware\n(OIDC + RBAC)"]
-        
+
         subgraph Core["Core Components"]
             SyncScheduler["Sync Scheduler"]
             WHOISWorker["WHOIS Worker"]
@@ -83,7 +83,7 @@ graph LR
             NotifDispatcher["Notification Dispatcher"]
             HealthMonitor["Health Monitor"]
         end
-        
+
         subgraph Adapters["Registrar Adapters"]
             AdapterInterface["RegistrarAdapter Interface"]
             GoDaddyAdapter["GoDaddy Adapter"]
@@ -92,7 +92,7 @@ graph LR
             CloudflareAdapter["Cloudflare Adapter"]
             NamecheapAdapter["Namecheap Adapter"]
         end
-        
+
         subgraph Services["Shared Services"]
             CryptoService["Crypto Service\n(AES-256-GCM)"]
             AuditService["Audit Logger"]
@@ -144,13 +144,13 @@ The adapter pattern allows adding new registrars without modifying core logic.
 type RegistrarAdapter interface {
     // ListDomains retrieves all active domains from the registrar account
     ListDomains(ctx context.Context, credential *RegistrarCredential) ([]NormalizedDomain, error)
-    
+
     // GetDomainDetail retrieves detailed info for a specific domain
     GetDomainDetail(ctx context.Context, credential *RegistrarCredential, domainName string) (*NormalizedDomain, error)
-    
+
     // TestConnection validates that credentials are working
     TestConnection(ctx context.Context, credential *RegistrarCredential) error
-    
+
     // RegistrarType returns the identifier for this adapter
     RegistrarType() string
 }
@@ -709,7 +709,7 @@ type NormalizedDomain struct {
     ResponseThresholdMs int            `gorm:"default:10000"`
     CreatedAt           time.Time
     UpdatedAt           time.Time
-    
+
     // Relations
     Tags               []Tag          `gorm:"many2many:domain_tags"`
     Group              *Group         `gorm:"foreignKey:GroupID"`
@@ -752,7 +752,7 @@ graph TB
     subgraph App["React Application"]
         Router["React Router"]
         AuthProvider["Auth Provider\n(OIDC Context)"]
-        
+
         subgraph Pages["Pages"]
             Dashboard["Dashboard Page"]
             DomainList["Domain List Page"]
@@ -761,19 +761,19 @@ graph TB
             Alerts["Alerts Page"]
             Settings["Settings Pages"]
         end
-        
+
         subgraph SettingsPages["Settings Sub-pages"]
             Registrars["Registrar Config"]
             Notifications["Notification Channels"]
             Users["User Management"]
             AuditLog["Audit Log"]
         end
-        
+
         subgraph StateManagement["State Management"]
             ReactQuery["React Query\n(Server State)"]
             Zustand["Zustand\n(UI State)"]
         end
-        
+
         subgraph SharedComponents["Shared Components"]
             DomainTable["Domain Table"]
             HealthBadge["Health Badge"]
@@ -819,14 +819,14 @@ graph TB
                 FE["frontend\n:443 → nginx:80"]
                 BE["backend\n:8080 → app:8080"]
             end
-            
+
             subgraph InternalNetwork["Internal Docker Network\n(domainradar-net)"]
                 PG["postgresql\n:5432"]
                 RD["redis\n:6379\nAOF, max 256MB"]
                 WD["who-dat\n:8080"]
             end
         end
-        
+
         subgraph Volumes["Named Volumes"]
             PGData["pg-data"]
             RedisData["redis-data"]
@@ -1386,5 +1386,3 @@ frontend/
 ├── e2e/
 │   └── journeys/
 ```
-
-

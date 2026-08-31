@@ -189,7 +189,7 @@ export function RegistrarSettingsPage() {
           if (newId) { setEditingRecord({ ...result, id: newId, registrar_type: values.registrar_type }); try { await registrarApi.test(newId); setTestResult({ success: true, message: '连接成功!' }); } catch (e: any) { setTestResult({ success: false, message: e.message || '连接失败' }); } }
         } catch (e: any) { message.error(e.message); }
       }
-    } catch {} finally { setTestLoading(false); }
+    } catch { /* ignore */ } finally { setTestLoading(false); }
   };
 
   const handleSubmit = (values: any) => {

@@ -14,11 +14,11 @@ const (
 )
 
 var (
-	ErrEmptyRegistrarType    = errors.New("registrar_type must not be empty")
-	ErrEmptyAccountName      = errors.New("account_name must not be empty")
-	ErrEmptyCredentials      = errors.New("credentials must not be empty")
-	ErrCredentialsTooLong    = fmt.Errorf("credentials must not exceed %d characters", MaxCredentialLength)
-	ErrMaxAccountsExceeded   = fmt.Errorf("maximum of %d accounts per registrar type exceeded", MaxAccountsPerType)
+	ErrEmptyRegistrarType  = errors.New("registrar_type must not be empty")
+	ErrEmptyAccountName    = errors.New("account_name must not be empty")
+	ErrEmptyCredentials    = errors.New("credentials must not be empty")
+	ErrCredentialsTooLong  = fmt.Errorf("credentials must not exceed %d characters", MaxCredentialLength)
+	ErrMaxAccountsExceeded = fmt.Errorf("maximum of %d accounts per registrar type exceeded", MaxAccountsPerType)
 )
 
 // ValidateRegistrarConfig validates registrar configuration fields.

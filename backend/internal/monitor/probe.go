@@ -57,7 +57,7 @@ func RunProbe(monitor *domain.ServiceMonitor) domain.ServiceCheck {
 		ResponseTimeMs: result.ResponseTimeMs,
 		DNSMs:          result.DNSMs,
 		TCPMs:          result.TCPMs,
-		TLSMs:         result.TLSMs,
+		TLSMs:          result.TLSMs,
 		TTFBMs:         result.TTFBMs,
 		DownloadMs:     result.DownloadMs,
 		TotalMs:        result.TotalMs,
@@ -182,11 +182,11 @@ func probeHTTPDetailed(url string, timeout time.Duration, expectedStatus int, is
 	// but probes should always connect directly to the target.
 	transport := &http.Transport{
 		Proxy:                 nil, // no proxy for probes
-		TLSClientConfig:      &tls.Config{InsecureSkipVerify: false},
-		MaxIdleConns:         10,
-		IdleConnTimeout:      30 * time.Second,
-		DisableKeepAlives:    true,
-		TLSHandshakeTimeout:  timeout,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: false},
+		MaxIdleConns:          10,
+		IdleConnTimeout:       30 * time.Second,
+		DisableKeepAlives:     true,
+		TLSHandshakeTimeout:   timeout,
 		ResponseHeaderTimeout: timeout,
 	}
 

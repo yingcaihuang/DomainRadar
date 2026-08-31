@@ -10,31 +10,31 @@ import (
 
 // NormalizedDomain is the unified domain representation across all registrars.
 type NormalizedDomain struct {
-	ID                     uint           `gorm:"primaryKey" json:"id"`
-	DomainName             string         `gorm:"uniqueIndex;size:253;not null" json:"domain_name"`
-	RegistrarAccountID     *uint          `gorm:"index" json:"registrar_account_id"`
-	RegistrarIdentifier    string         `gorm:"size:100" json:"registrar_identifier"`
-	CreationDate           *time.Time     `json:"creation_date"`
-	ExpirationDate         *time.Time     `gorm:"index" json:"expiration_date"`
-	AutoRenew              bool           `json:"auto_renew"`
-	RenewalDeadline        *time.Time     `json:"renewal_deadline"`
-	Status                 string         `gorm:"size:50;default:'active'" json:"status"`
-	Nameservers            JSON           `gorm:"type:text" json:"nameservers"`
-	PrivacyProtection      bool           `json:"privacy_protection"`
-	LockStatus             bool           `json:"lock_status"`
-	DataSourceType         string         `gorm:"size:20" json:"data_source_type"` // "api", "whois", "manual"
-	LastSyncAt             *time.Time     `json:"last_sync_at"`
-	WhoisLastCheckedAt     *time.Time     `json:"whois_last_checked_at"`
-	GroupID                *uint          `gorm:"index" json:"group_id"`
-	Notes                  string         `gorm:"type:text" json:"notes"`
-	WebsiteURL             string         `gorm:"size:2048" json:"website_url"`
-	EmailEnabled           bool           `json:"email_enabled"`
-	HealthScore            int            `gorm:"default:100" json:"health_score"`
-	CheckIntervalMinutes   int            `gorm:"default:5" json:"check_interval_minutes"`
-	ResponseTimeThresholdMs int           `gorm:"default:10000" json:"response_time_threshold_ms"`
-	AbsenceCount           int            `gorm:"default:0" json:"absence_count"`
-	CreatedAt              time.Time      `json:"created_at"`
-	UpdatedAt              time.Time      `json:"updated_at"`
+	ID                      uint       `gorm:"primaryKey" json:"id"`
+	DomainName              string     `gorm:"uniqueIndex;size:253;not null" json:"domain_name"`
+	RegistrarAccountID      *uint      `gorm:"index" json:"registrar_account_id"`
+	RegistrarIdentifier     string     `gorm:"size:100" json:"registrar_identifier"`
+	CreationDate            *time.Time `json:"creation_date"`
+	ExpirationDate          *time.Time `gorm:"index" json:"expiration_date"`
+	AutoRenew               bool       `json:"auto_renew"`
+	RenewalDeadline         *time.Time `json:"renewal_deadline"`
+	Status                  string     `gorm:"size:50;default:'active'" json:"status"`
+	Nameservers             JSON       `gorm:"type:text" json:"nameservers"`
+	PrivacyProtection       bool       `json:"privacy_protection"`
+	LockStatus              bool       `json:"lock_status"`
+	DataSourceType          string     `gorm:"size:20" json:"data_source_type"` // "api", "whois", "manual"
+	LastSyncAt              *time.Time `json:"last_sync_at"`
+	WhoisLastCheckedAt      *time.Time `json:"whois_last_checked_at"`
+	GroupID                 *uint      `gorm:"index" json:"group_id"`
+	Notes                   string     `gorm:"type:text" json:"notes"`
+	WebsiteURL              string     `gorm:"size:2048" json:"website_url"`
+	EmailEnabled            bool       `json:"email_enabled"`
+	HealthScore             int        `gorm:"default:100" json:"health_score"`
+	CheckIntervalMinutes    int        `gorm:"default:5" json:"check_interval_minutes"`
+	ResponseTimeThresholdMs int        `gorm:"default:10000" json:"response_time_threshold_ms"`
+	AbsenceCount            int        `gorm:"default:0" json:"absence_count"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 
 	// Relations
 	Tags             []Tag             `gorm:"many2many:domain_tags" json:"tags,omitempty"`
@@ -113,10 +113,10 @@ type HealthCheck struct {
 
 // CertificateMonitor tracks endpoints to monitor for SSL/TLS certificates.
 type CertificateMonitor struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	DomainID  uint      `gorm:"index;not null" json:"domain_id"`
-	Endpoint  string    `gorm:"size:255;not null" json:"endpoint"` // e.g. "www.example.com:443"
-	Label     string    `gorm:"size:100" json:"label"`             // e.g. "主站", "API"
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	DomainID      uint       `gorm:"index;not null" json:"domain_id"`
+	Endpoint      string     `gorm:"size:255;not null" json:"endpoint"` // e.g. "www.example.com:443"
+	Label         string     `gorm:"size:100" json:"label"`             // e.g. "主站", "API"
 	Enabled       bool       `gorm:"default:true" json:"enabled"`
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	NextCheckAt   *time.Time `json:"next_check_at"`
@@ -141,7 +141,7 @@ type CertificateCheck struct {
 	SerialNumber  string    `gorm:"size:100" json:"serial_number"`
 	DaysRemaining int       `json:"days_remaining"`
 	Error         string    `gorm:"type:text" json:"error"`
-	Chain         string    `gorm:"type:text" json:"chain"`        // JSON array of chain certs
+	Chain         string    `gorm:"type:text" json:"chain"` // JSON array of chain certs
 	ConnectedIP   string    `gorm:"size:50" json:"connected_ip"`
 	SNI           string    `gorm:"size:255" json:"sni"`
 	DNSResolveMs  int64     `json:"dns_resolve_ms"`
@@ -217,14 +217,14 @@ type NotificationRule struct {
 
 // NotificationLog records the delivery status of each notification attempt.
 type NotificationLog struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	AlertID     uint      `gorm:"index;not null" json:"alert_id"`
-	ChannelID   uint      `gorm:"index;not null" json:"channel_id"`
-	Status      string    `gorm:"size:20;not null" json:"status"` // "sent", "failed", "retrying"
-	ErrorReason string    `gorm:"type:text" json:"error_reason"`
-	RetryCount  int       `gorm:"default:0" json:"retry_count"`
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	AlertID     uint       `gorm:"index;not null" json:"alert_id"`
+	ChannelID   uint       `gorm:"index;not null" json:"channel_id"`
+	Status      string     `gorm:"size:20;not null" json:"status"` // "sent", "failed", "retrying"
+	ErrorReason string     `gorm:"type:text" json:"error_reason"`
+	RetryCount  int        `gorm:"default:0" json:"retry_count"`
 	SentAt      *time.Time `json:"sent_at"`
-	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt   time.Time  `json:"created_at"`
 
 	// Relations
 	Alert   Alert               `gorm:"foreignKey:AlertID" json:"alert,omitempty"`
@@ -350,17 +350,16 @@ func (JSON) GormDataType() string {
 	return "text"
 }
 
-
 // ExpirationRule defines a configurable rule for domain expiration alerts and display.
 type ExpirationRule struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	DaysMin   int       `gorm:"not null" json:"days_min"`           // Minimum days remaining (inclusive). Use negative for expired.
-	DaysMax   int       `gorm:"not null" json:"days_max"`           // Maximum days remaining (exclusive).
-	Severity  string    `gorm:"size:20;not null" json:"severity"`   // "critical", "warning", "info"
-	Color     string    `gorm:"size:20;not null" json:"color"`      // Hex color like "#ef4444"
-	Label     string    `gorm:"size:50;not null" json:"label"`      // Display label like "已过期", "即将到期"
-	Score     int       `gorm:"not null" json:"score"`              // Health score for this range (0-100)
-	SortOrder int       `gorm:"default:0" json:"sort_order"`        // Display priority
+	DaysMin   int       `gorm:"not null" json:"days_min"`         // Minimum days remaining (inclusive). Use negative for expired.
+	DaysMax   int       `gorm:"not null" json:"days_max"`         // Maximum days remaining (exclusive).
+	Severity  string    `gorm:"size:20;not null" json:"severity"` // "critical", "warning", "info"
+	Color     string    `gorm:"size:20;not null" json:"color"`    // Hex color like "#ef4444"
+	Label     string    `gorm:"size:50;not null" json:"label"`    // Display label like "已过期", "即将到期"
+	Score     int       `gorm:"not null" json:"score"`            // Health score for this range (0-100)
+	SortOrder int       `gorm:"default:0" json:"sort_order"`      // Display priority
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -386,8 +385,8 @@ type EmailCheckResult struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	DomainID    uint      `gorm:"index;not null" json:"domain_id"`
 	MonitorID   uint      `gorm:"index;not null" json:"monitor_id"`
-	TotalScore  int       `json:"total_score"`                // 0-100
-	Grade       string    `gorm:"size:5" json:"grade"`        // A, B, C, D
+	TotalScore  int       `json:"total_score"`         // 0-100
+	Grade       string    `gorm:"size:5" json:"grade"` // A, B, C, D
 	MXScore     int       `json:"mx_score"`
 	SPFScore    int       `json:"spf_score"`
 	DKIMScore   int       `json:"dkim_score"`
@@ -403,15 +402,14 @@ type EmailCheckResult struct {
 	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
 }
 
-
 // EmailAlertRule defines configurable alert rules for email security monitoring.
 type EmailAlertRule struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
-	RuleType    string    `gorm:"size:30;not null" json:"rule_type"`    // "total_score", "score_drop", "mx_score", "spf_score", "dkim_score", "dmarc_score"
-	Threshold   int       `gorm:"not null" json:"threshold"`           // Score threshold (e.g. 50 for total, 0 for single item)
-	Severity    string    `gorm:"size:20;not null" json:"severity"`    // "critical", "warning", "info"
+	RuleType    string    `gorm:"size:30;not null" json:"rule_type"` // "total_score", "score_drop", "mx_score", "spf_score", "dkim_score", "dmarc_score"
+	Threshold   int       `gorm:"not null" json:"threshold"`         // Score threshold (e.g. 50 for total, 0 for single item)
+	Severity    string    `gorm:"size:20;not null" json:"severity"`  // "critical", "warning", "info"
 	Enabled     bool      `gorm:"default:true" json:"enabled"`
-	Description string    `gorm:"size:200" json:"description"`         // Human readable description
+	Description string    `gorm:"size:200" json:"description"` // Human readable description
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -430,7 +428,7 @@ type ServiceMonitor struct {
 	DomainID       uint             `gorm:"index;not null" json:"domain_id"`
 	MonitorType    string           `gorm:"size:10;not null" json:"monitor_type"` // "tcp", "udp", "http", "https"
 	Target         string           `gorm:"size:500;not null" json:"target"`      // host:port for tcp/udp, full URL for http/https
-	Label          string           `gorm:"size:100" json:"label"`               // e.g. "主站HTTP", "SMTP"
+	Label          string           `gorm:"size:100" json:"label"`                // e.g. "主站HTTP", "SMTP"
 	IntervalSec    int              `gorm:"default:300" json:"interval_sec"`      // Check interval in seconds (default 5min)
 	TimeoutSec     int              `gorm:"default:10" json:"timeout_sec"`        // Timeout in seconds
 	ExpectedStatus int              `gorm:"default:200" json:"expected_status"`   // Expected HTTP status code (for http/https)
@@ -447,12 +445,12 @@ type ServiceCheck struct {
 	DomainID       uint      `gorm:"index;not null" json:"domain_id"`
 	Success        bool      `json:"success"`
 	ResponseTimeMs int64     `json:"response_time_ms"`
-	DNSMs          int64     `json:"dns_ms"`           // DNS resolution time
-	TCPMs          int64     `json:"tcp_ms"`           // TCP handshake time
-	TLSMs          int64     `json:"tls_ms"`           // TLS handshake time (0 for non-TLS)
-	TTFBMs         int64     `json:"ttfb_ms"`          // Time to first byte
-	DownloadMs     int64     `json:"download_ms"`      // Body download time
-	TotalMs        int64     `json:"total_ms"`         // Total request time
+	DNSMs          int64     `json:"dns_ms"`      // DNS resolution time
+	TCPMs          int64     `json:"tcp_ms"`      // TCP handshake time
+	TLSMs          int64     `json:"tls_ms"`      // TLS handshake time (0 for non-TLS)
+	TTFBMs         int64     `json:"ttfb_ms"`     // Time to first byte
+	DownloadMs     int64     `json:"download_ms"` // Body download time
+	TotalMs        int64     `json:"total_ms"`    // Total request time
 	StatusCode     int       `json:"status_code"`
 	ConnectedIP    string    `gorm:"size:50" json:"connected_ip"`
 	Error          string    `gorm:"size:500" json:"error"`

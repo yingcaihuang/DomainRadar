@@ -47,30 +47,30 @@ type configureRequest struct {
 }
 
 type monitorResponse struct {
-	ID            uint               `json:"id"`
-	DomainID      uint               `json:"domain_id"`
-	Enabled       bool               `json:"enabled"`
-	DKIMSelectors string             `json:"dkim_selectors"`
-	MailServerIPs string             `json:"mail_server_ips"`
-	LastCheckedAt *time.Time         `json:"last_checked_at"`
-	NextCheckAt   *time.Time         `json:"next_check_at"`
-	LatestResult  *resultResponse    `json:"latest_result,omitempty"`
+	ID            uint            `json:"id"`
+	DomainID      uint            `json:"domain_id"`
+	Enabled       bool            `json:"enabled"`
+	DKIMSelectors string          `json:"dkim_selectors"`
+	MailServerIPs string          `json:"mail_server_ips"`
+	LastCheckedAt *time.Time      `json:"last_checked_at"`
+	NextCheckAt   *time.Time      `json:"next_check_at"`
+	LatestResult  *resultResponse `json:"latest_result,omitempty"`
 }
 
 type resultResponse struct {
-	ID          uint              `json:"id"`
-	TotalScore  int               `json:"total_score"`
-	Grade       string            `json:"grade"`
-	MXScore     int               `json:"mx_score"`
-	SPFScore    int               `json:"spf_score"`
-	DKIMScore   int               `json:"dkim_score"`
-	DMARCScore  int               `json:"dmarc_score"`
-	PTRScore    int               `json:"ptr_score"`
-	MTASTSScore int               `json:"mta_sts_score"`
-	TLSRPTScore int               `json:"tlsrpt_score"`
-	BIMIScore   int               `json:"bimi_score"`
+	ID          uint               `json:"id"`
+	TotalScore  int                `json:"total_score"`
+	Grade       string             `json:"grade"`
+	MXScore     int                `json:"mx_score"`
+	SPFScore    int                `json:"spf_score"`
+	DKIMScore   int                `json:"dkim_score"`
+	DMARCScore  int                `json:"dmarc_score"`
+	PTRScore    int                `json:"ptr_score"`
+	MTASTSScore int                `json:"mta_sts_score"`
+	TLSRPTScore int                `json:"tlsrpt_score"`
+	BIMIScore   int                `json:"bimi_score"`
 	Details     *EmailCheckDetails `json:"details,omitempty"`
-	CheckedAt   time.Time         `json:"checked_at"`
+	CheckedAt   time.Time          `json:"checked_at"`
 }
 
 // --- Handlers ---

@@ -5,7 +5,7 @@ import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { tagApi, groupApi } from '../services';
 
 export function TagsGroupsPage() {
-  
+
   const queryClient = useQueryClient();
   const [tagInput, setTagInput] = useState('');
   const [groupModalVisible, setGroupModalVisible] = useState(false);

@@ -17,7 +17,7 @@ type RegistrarCredential struct {
 	Token           string `json:"token,omitempty"`
 	Username        string `json:"username,omitempty"`
 	AccessKeyID     string `json:"access_key_id,omitempty"`
-	SecretAccessKey  string `json:"secret_access_key,omitempty"`
+	SecretAccessKey string `json:"secret_access_key,omitempty"`
 	IPWhitelist     string `json:"ip_whitelist,omitempty"`
 
 	// Extra holds any additional registrar-specific credential fields.

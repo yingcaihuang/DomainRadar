@@ -639,7 +639,6 @@ func (h *NotificationHandler) DeleteRule(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "notification rule deleted"})
 }
 
-
 // ListChannelLogs returns the notification delivery history for a specific channel.
 // GET /notifications/channels/:id/logs?page=1&page_size=20
 func (h *NotificationHandler) ListChannelLogs(c *gin.Context) {

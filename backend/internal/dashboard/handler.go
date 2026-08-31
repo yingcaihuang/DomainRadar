@@ -40,20 +40,20 @@ func (h *DashboardHandler) RegisterRoutes(rg *gin.RouterGroup) {
 
 // DashboardResponse represents the dashboard summary.
 type DashboardResponse struct {
-	TotalDomains     int64               `json:"total_domains"`
-	ExpiringWithin30 int64               `json:"expiring_within_30_days"`
-	ActiveAlerts     int64               `json:"active_alerts"`
-	OverallHealth    float64             `json:"overall_health_score"`
-	ByRegistrar      []RegistrarGroup    `json:"by_registrar"`
-	CertMonitors     int64               `json:"cert_monitors"`
-	CertExpiring     int64               `json:"cert_expiring"`
-	EmailMonitors    int64               `json:"email_monitors"`
-	EmailAvgScore    float64             `json:"email_avg_score"`
+	TotalDomains     int64            `json:"total_domains"`
+	ExpiringWithin30 int64            `json:"expiring_within_30_days"`
+	ActiveAlerts     int64            `json:"active_alerts"`
+	OverallHealth    float64          `json:"overall_health_score"`
+	ByRegistrar      []RegistrarGroup `json:"by_registrar"`
+	CertMonitors     int64            `json:"cert_monitors"`
+	CertExpiring     int64            `json:"cert_expiring"`
+	EmailMonitors    int64            `json:"email_monitors"`
+	EmailAvgScore    float64          `json:"email_avg_score"`
 	// New: detailed monitoring stats for dashboard
-	ServiceMonitors      []ServiceMonitorSummary `json:"service_monitors"`
-	CertificateSummary   []CertSummaryItem       `json:"certificate_summary"`
-	EmailGrades          EmailGradeDistribution  `json:"email_grades"`
-	WhoisStatus          WhoisStatusSummary      `json:"whois_status"`
+	ServiceMonitors    []ServiceMonitorSummary `json:"service_monitors"`
+	CertificateSummary []CertSummaryItem       `json:"certificate_summary"`
+	EmailGrades        EmailGradeDistribution  `json:"email_grades"`
+	WhoisStatus        WhoisStatusSummary      `json:"whois_status"`
 }
 
 // ServiceMonitorSummary shows per-domain service uptime.
@@ -73,11 +73,11 @@ type CertSummaryItem struct {
 
 // EmailGradeDistribution shows count of domains per grade.
 type EmailGradeDistribution struct {
-	GradeA int               `json:"grade_a"`
-	GradeB int               `json:"grade_b"`
-	GradeC int               `json:"grade_c"`
-	GradeD int               `json:"grade_d"`
-	Items  []EmailScoreItem  `json:"items"`
+	GradeA int              `json:"grade_a"`
+	GradeB int              `json:"grade_b"`
+	GradeC int              `json:"grade_c"`
+	GradeD int              `json:"grade_d"`
+	Items  []EmailScoreItem `json:"items"`
 }
 
 // EmailScoreItem shows per-domain email security score.
@@ -89,10 +89,10 @@ type EmailScoreItem struct {
 
 // WhoisStatusSummary shows WHOIS check status.
 type WhoisStatusSummary struct {
-	Checked      int    `json:"checked"`
-	Unchecked    int    `json:"unchecked"`
-	LastChecked  string `json:"last_checked"`
-	NextCheck    string `json:"next_check"`
+	Checked     int    `json:"checked"`
+	Unchecked   int    `json:"unchecked"`
+	LastChecked string `json:"last_checked"`
+	NextCheck   string `json:"next_check"`
 }
 
 // RegistrarGroup shows domains grouped by registrar.
@@ -251,19 +251,19 @@ func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, DashboardResponse{
-		TotalDomains:     totalDomains,
-		ExpiringWithin30: expiringWithin30,
-		ActiveAlerts:     activeAlerts,
-		OverallHealth:    float64(int(avgHealth*100)) / 100,
-		ByRegistrar:      registrarGroups,
-		CertMonitors:     certMonitors,
-		CertExpiring:     certExpiring,
-		EmailMonitors:    emailMonitors,
-		EmailAvgScore:    float64(int(emailAvgScore*10)) / 10,
-		ServiceMonitors:  svcSummary,
+		TotalDomains:       totalDomains,
+		ExpiringWithin30:   expiringWithin30,
+		ActiveAlerts:       activeAlerts,
+		OverallHealth:      float64(int(avgHealth*100)) / 100,
+		ByRegistrar:        registrarGroups,
+		CertMonitors:       certMonitors,
+		CertExpiring:       certExpiring,
+		EmailMonitors:      emailMonitors,
+		EmailAvgScore:      float64(int(emailAvgScore*10)) / 10,
+		ServiceMonitors:    svcSummary,
 		CertificateSummary: certSummary,
-		EmailGrades:      emailGrades,
-		WhoisStatus:      whoisStatus,
+		EmailGrades:        emailGrades,
+		WhoisStatus:        whoisStatus,
 	})
 }
 

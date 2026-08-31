@@ -15,13 +15,13 @@ const (
 
 // Permission constants define the available permissions.
 const (
-	ViewDomains            = "view_domains"
-	ManageDomains          = "manage_domains"
-	ViewAlerts             = "view_alerts"
-	ManageAlerts           = "manage_alerts"
-	ConfigureIntegrations  = "configure_integrations"
-	ManageUsers            = "manage_users"
-	ViewAuditLogs          = "view_audit_logs"
+	ViewDomains           = "view_domains"
+	ManageDomains         = "manage_domains"
+	ViewAlerts            = "view_alerts"
+	ManageAlerts          = "manage_alerts"
+	ConfigureIntegrations = "configure_integrations"
+	ManageUsers           = "manage_users"
+	ViewAuditLogs         = "view_audit_logs"
 )
 
 // permissionMatrix maps each role to its granted permissions.

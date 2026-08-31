@@ -177,17 +177,16 @@ func (h *MonitorHandler) CheckNow(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": check})
 }
 
-
 // MonitorStats represents aggregated statistics for a monitor.
 type MonitorStats struct {
-	MonitorID      uint    `json:"monitor_id"`
-	TotalChecks    int     `json:"total_checks"`
-	SuccessChecks  int     `json:"success_checks"`
-	FailedChecks   int     `json:"failed_checks"`
-	UptimePercent  float64 `json:"uptime_percent"`
-	AvgResponseMs  float64 `json:"avg_response_ms"`
-	MaxResponseMs  int64   `json:"max_response_ms"`
-	MinResponseMs  int64   `json:"min_response_ms"`
+	MonitorID     uint    `json:"monitor_id"`
+	TotalChecks   int     `json:"total_checks"`
+	SuccessChecks int     `json:"success_checks"`
+	FailedChecks  int     `json:"failed_checks"`
+	UptimePercent float64 `json:"uptime_percent"`
+	AvgResponseMs float64 `json:"avg_response_ms"`
+	MaxResponseMs int64   `json:"max_response_ms"`
+	MinResponseMs int64   `json:"min_response_ms"`
 }
 
 // GetStats returns aggregated stats for a monitor over the last 7 days.

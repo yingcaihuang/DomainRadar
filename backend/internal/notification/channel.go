@@ -20,8 +20,8 @@ type NotificationChannel interface {
 // Notification contains the alert data to be sent through a channel.
 type Notification struct {
 	AlertID     uint      `json:"alert_id"`
-	Severity    string    `json:"severity"`     // "informational", "warning", "critical", "expired"
-	AlertType   string    `json:"alert_type"`   // "expiration", "certificate", "downtime", "email", "dns"
+	Severity    string    `json:"severity"`   // "informational", "warning", "critical", "expired"
+	AlertType   string    `json:"alert_type"` // "expiration", "certificate", "downtime", "email", "dns"
 	DomainName  string    `json:"domain_name"`
 	DomainURL   string    `json:"domain_url"`
 	Message     string    `json:"message"`

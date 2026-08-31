@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -147,8 +147,6 @@ func (c *CNEAlarmChannel) postAlarm(ctx context.Context, payload *CNEAlarmPayloa
 
 	return nil
 }
-
-
 
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {

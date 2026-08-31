@@ -19,15 +19,15 @@ const (
 
 // godaddyDomainResponse represents the domain object returned by the GoDaddy API.
 type godaddyDomainResponse struct {
-	Domain        string    `json:"domain"`
-	CreatedAt     string    `json:"createdAt"`
-	Expires       string    `json:"expires"`
-	RenewAuto     bool      `json:"renewAuto"`
-	RenewDeadline string    `json:"renewDeadline"`
-	Status        string    `json:"status"`
-	NameServers   []string  `json:"nameServers"`
-	Privacy       bool      `json:"privacy"`
-	Locked        bool      `json:"locked"`
+	Domain        string   `json:"domain"`
+	CreatedAt     string   `json:"createdAt"`
+	Expires       string   `json:"expires"`
+	RenewAuto     bool     `json:"renewAuto"`
+	RenewDeadline string   `json:"renewDeadline"`
+	Status        string   `json:"status"`
+	NameServers   []string `json:"nameServers"`
+	Privacy       bool     `json:"privacy"`
+	Locked        bool     `json:"locked"`
 }
 
 // Adapter implements RegistrarAdapter for GoDaddy.
