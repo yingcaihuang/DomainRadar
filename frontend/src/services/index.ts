@@ -154,6 +154,7 @@ export interface NotificationLogEntry {
 export const notificationApi = {
   channels: {
     list: () => request<{ data: NotificationChannel[] }>('/notifications/channels'),
+    get: (id: number) => request<{ data: NotificationChannel }>(`/notifications/channels/${id}`),
     create: (data: { channel_type: string; name: string; config: Record<string, string> }) =>
       request<{ data: NotificationChannel }>('/notifications/channels', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: { name?: string; config?: Record<string, string> }) =>

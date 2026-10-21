@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, App, Drawer } from 'antd';
-import { PlusOutlined, ExperimentOutlined, DeleteOutlined, HistoryOutlined } from '@ant-design/icons';
+import { PlusOutlined, ExperimentOutlined, DeleteOutlined, HistoryOutlined, EditOutlined } from '@ant-design/icons';
 import { notificationApi } from '../services';
 import type { NotificationLogEntry } from '../services';
+import type { NotificationChannel } from '../types';
 
 export function NotificationSettingsPage() {
   const { modal } = App.useApp();
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<NotificationChannel | null>(null);
   const [form] = Form.useForm();
   const [logsDrawer, setLogsDrawer] = useState<{ visible: boolean; channelId: number; channelName: string }>({ visible: false, channelId: 0, channelName: '' });
   const [logsPage, setLogsPage] = useState(1);
@@ -24,13 +26,42 @@ export function NotificationSettingsPage() {
     enabled: logsDrawer.visible && logsDrawer.channelId > 0,
   });
 
+  const closeModal = () => {
+    setModalVisible(false);
+    setEditingChannel(null);
+    form.resetFields();
+  };
+  const openAdd = () => { setEditingChannel(null); form.resetFields(); setModalVisible(true); };
+  const openEdit = async (record: NotificationChannel) => {
+    setEditingChannel(record);
+    form.setFieldsValue({ channel_type: record.channel_type, name: record.name });
+    setModalVisible(true);
+    // 拉取解密后的真实配置回填表单，用户可见并按需修改
+    try {
+      const res = await notificationApi.channels.get(record.id);
+      form.setFieldsValue(res.data.config);
+    } catch (e: any) {
+      message.error(`获取渠道配置失败: ${e.message}`);
+      closeModal();
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: notificationApi.channels.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-channels'] });
-      setModalVisible(false);
-      form.resetFields();
+      closeModal();
       message.success('Webhook 渠道已创建');
+    },
+    onError: (e: Error) => message.error(e.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof notificationApi.channels.update>[1] }) => notificationApi.channels.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-channels'] });
+      closeModal();
+      message.success('通知渠道已更新');
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -78,8 +109,9 @@ export function NotificationSettingsPage() {
     {
       title: '操作',
       key: 'actions',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: NotificationChannel) => (
         <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
           <Button size="small" icon={<HistoryOutlined />} onClick={() => { setLogsDrawer({ visible: true, channelId: record.id, channelName: record.name }); setLogsPage(1); }}>日志</Button>
           <Button size="small" icon={<ExperimentOutlined />} onClick={() => testMutation.mutate(record.id)}>测试</Button>
           <Button size="small" danger icon={<DeleteOutlined />} onClick={() => modal.confirm({ title: '确定删除此渠道？', onOk: () => deleteMutation.mutateAsync(record.id) })}>删除</Button>
@@ -144,7 +176,7 @@ export function NotificationSettingsPage() {
             </h1>
             <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>配置告警通知的 Webhook 推送地址</p>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>添加 Webhook</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>添加 Webhook</Button>
         </div>
       </div>
 
@@ -152,8 +184,9 @@ export function NotificationSettingsPage() {
         <Table rowKey="id" columns={columns} dataSource={data?.data || []} loading={isLoading} pagination={false} />
       </Card>
 
-      <Modal title="添加通知渠道" open={modalVisible} onCancel={() => setModalVisible(false)} onOk={() => form.submit()} confirmLoading={createMutation.isPending} okText="创建" cancelText="取消">
+      <Modal title={editingChannel ? '编辑通知渠道' : '添加通知渠道'} open={modalVisible} onCancel={closeModal} onOk={() => form.submit()} confirmLoading={createMutation.isPending || updateMutation.isPending} okText={editingChannel ? '保存' : '创建'} cancelText="取消">
         <Form form={form} layout="vertical" initialValues={{ channel_type: 'webhook' }} onFinish={(values) => {
+          // 编辑回填了真实配置，与新建一样构建完整 config 提交（api_url/alarm_code 空值走后端默认）
           const config: Record<string, string> = {};
           if (values.channel_type === 'webhook') {
             config.webhook_url = values.webhook_url;
@@ -162,10 +195,14 @@ export function NotificationSettingsPage() {
             config.api_key = values.api_key;
             if (values.alarm_code) config.alarm_code = values.alarm_code;
           }
-          createMutation.mutate({ channel_type: values.channel_type, name: values.name, config });
+          if (editingChannel) {
+            updateMutation.mutate({ id: editingChannel.id, data: { name: values.name, config } });
+          } else {
+            createMutation.mutate({ channel_type: values.channel_type, name: values.name, config });
+          }
         }}>
           <Form.Item name="channel_type" label="渠道类型" rules={[{ required: true }]}>
-            <Select options={[
+            <Select disabled={!!editingChannel} options={[
               { value: 'webhook', label: 'Webhook (钉钉/企微/飞书/Slack)' },
               { value: 'cne_alarm', label: 'CNE 告警平台' },
             ]} />

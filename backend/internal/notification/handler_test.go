@@ -84,6 +84,7 @@ func newHandlerTestSetup(t *testing.T) *handlerTestSetup {
 	channels := v1.Group("/channels")
 	{
 		channels.GET("", handler.ListChannels)
+		channels.GET("/:id", handler.GetChannel)
 		channels.POST("", handler.CreateChannel)
 		channels.PUT("/:id", handler.UpdateChannel)
 		channels.DELETE("/:id", handler.DeleteChannel)
@@ -265,6 +266,48 @@ func TestUpdateChannel_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+func TestGetChannel_Success(t *testing.T) {
+	ts := newHandlerTestSetup(t)
+
+	// Create a channel first
+	encrypted, _ := ts.cryptoService.Encrypt(`{"url":"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secret-key-1234"}`)
+	channel := domain.NotificationChannel{
+		ChannelType:     "webhook",
+		Name:            "Ops Alert",
+		ConfigEncrypted: encrypted,
+		Status:          "active",
+	}
+	ts.db.Create(&channel)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/notifications/channels/%d", channel.ID), nil)
+	ts.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]*ChannelResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	data := resp["data"]
+	assert.Equal(t, channel.ID, data.ID)
+	assert.Equal(t, "Ops Alert", data.Name)
+	assert.Equal(t, "webhook", data.ChannelType)
+	// Config is returned decrypted for the edit form — no masking.
+	assert.Equal(t, "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=secret-key-1234", data.Config["url"])
+	assert.NotContains(t, data.Config["url"], "*")
+}
+
+func TestGetChannel_NotFound(t *testing.T) {
+	ts := newHandlerTestSetup(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/v1/notifications/channels/999", nil)
+	ts.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestDeleteChannel_Success(t *testing.T) {
 	ts := newHandlerTestSetup(t)
 
@@ -348,10 +391,10 @@ func TestTestChannel_Success(t *testing.T) {
 
 	// Register a factory that creates a webhook channel pointing to our test server
 	ts.channelRegistry.Register("webhook", func(config *ChannelConfig) NotificationChannel {
-		return NewWebhookChannelWithClient(config.GetSetting("url"), nil, server.Client())
+		return NewWebhookChannelWithClient(config.GetSetting("webhook_url"), nil, server.Client())
 	})
 
-	encrypted, _ := ts.cryptoService.Encrypt(fmt.Sprintf(`{"url":"%s"}`, server.URL))
+	encrypted, _ := ts.cryptoService.Encrypt(fmt.Sprintf(`{"webhook_url":"%s"}`, server.URL))
 	channel := domain.NotificationChannel{
 		ChannelType:     "webhook",
 		Name:            "Test Webhook",
@@ -390,10 +433,10 @@ func TestTestChannel_Failure(t *testing.T) {
 	defer server.Close()
 
 	ts.channelRegistry.Register("webhook", func(config *ChannelConfig) NotificationChannel {
-		return NewWebhookChannelWithClient(config.GetSetting("url"), nil, server.Client())
+		return NewWebhookChannelWithClient(config.GetSetting("webhook_url"), nil, server.Client())
 	})
 
-	encrypted, _ := ts.cryptoService.Encrypt(fmt.Sprintf(`{"url":"%s"}`, server.URL))
+	encrypted, _ := ts.cryptoService.Encrypt(fmt.Sprintf(`{"webhook_url":"%s"}`, server.URL))
 	channel := domain.NotificationChannel{
 		ChannelType:     "webhook",
 		Name:            "Failing Webhook",

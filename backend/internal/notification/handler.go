@@ -93,6 +93,7 @@ func (h *NotificationHandler) RegisterRoutes(rg *gin.RouterGroup) {
 		channels := notifications.Group("/channels")
 		{
 			channels.GET("", h.ListChannels)
+			channels.GET("/:id", h.GetChannel)
 			channels.POST("", h.CreateChannel)
 			channels.PUT("/:id", h.UpdateChannel)
 			channels.DELETE("/:id", h.DeleteChannel)
@@ -182,6 +183,47 @@ func (h *NotificationHandler) ListChannels(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": responses})
+}
+
+// GetChannel returns a single notification channel with the decrypted config,
+// used by the edit form to show and modify the real values.
+func (h *NotificationHandler) GetChannel(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		errors.ErrorResponse(c, errors.BadRequest("invalid channel ID"))
+		return
+	}
+
+	var channel domain.NotificationChannel
+	if err := h.db.First(&channel, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			errors.ErrorResponse(c, errors.NotFound("notification channel not found"))
+			return
+		}
+		h.logger.Error("failed to query notification channel", zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to query notification channel"))
+		return
+	}
+
+	config, err := h.decryptConfig(channel.ConfigEncrypted)
+	if err != nil {
+		h.logger.Error("failed to decrypt channel config", zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to decrypt channel configuration"))
+		return
+	}
+
+	resp := &ChannelResponse{
+		ID:           channel.ID,
+		ChannelType:  channel.ChannelType,
+		Name:         channel.Name,
+		Config:       config.Settings,
+		Status:       channel.Status,
+		LastTestedAt: channel.LastTestedAt,
+		CreatedAt:    channel.CreatedAt,
+		UpdatedAt:    channel.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 
 // CreateChannel creates a new notification channel with encrypted config.
