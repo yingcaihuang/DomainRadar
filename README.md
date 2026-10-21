@@ -183,6 +183,19 @@ cat backup.sql | docker exec -i domainradar-postgresql psql -U domainradar domai
 5. 设置通知 — 设置 > 通知渠道，添加钉钉/企业微信 Webhook
 6. SSO（可选） — 设置 > SSO 配置，配置 OIDC 提供商
 
+注册商列表操作列的“更多”菜单可按账户切换“自动同步”和“全量导入”，两个开关对新建及升级前已有账户均默认开启：
+
+- 自动同步：每分钟检查已连接账户是否达到同步周期；关闭后不再启动新的定时同步，仍可手动同步。已在执行的任务不会被中断。
+- 全量导入：开启时同步会导入账户全部域名，包括尚未手动选择的域名；关闭时同步仅更新归属于该账户的已导入域名，仍会检查这些域名是否从注册商消失。手动预览和选择导入不受此开关限制。
+- Cloudflare 账户需要配置 API Token 和 Account ID。未配置有效的 `DOMAINRADAR_MASTER_KEY` 时，不启动自动同步，手动凭证操作会返回错误。
+
+升级时，未开启 `AUTO_MIGRATE=true` 的部署需先执行数据库迁移，再启动新版后端：
+
+```bash
+cd backend
+go run ./cmd/migrate -command up
+```
+
 ## 故障排查
 
 ### API 请求返回 308 重定向

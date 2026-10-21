@@ -155,6 +155,8 @@ export interface RegistrarAccount {
   credentials: Record<string, string>;
   status: string;
   sync_interval_hours: number;
+  auto_sync_enabled: boolean;
+  full_import_enabled: boolean;
   last_sync_at: string | null;
   domain_count: number;
   created_at: string;

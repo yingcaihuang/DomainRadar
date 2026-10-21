@@ -61,6 +61,9 @@ func NewCryptoServiceFromEnv() (*CryptoService, error) {
 // Encrypt encrypts plaintext using AES-256-GCM with a unique random nonce.
 // The result is base64-encoded with the nonce prepended to the ciphertext.
 func (s *CryptoService) Encrypt(plaintext string) (string, error) {
+	if s == nil {
+		return "", errors.New("credential encryption service is not configured")
+	}
 	nonce := make([]byte, nonceSize)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", fmt.Errorf("failed to generate nonce: %w", err)
@@ -73,6 +76,9 @@ func (s *CryptoService) Encrypt(plaintext string) (string, error) {
 // Decrypt decrypts a base64-encoded ciphertext that was encrypted with Encrypt.
 // It extracts the nonce from the first 12 bytes and decrypts the remainder.
 func (s *CryptoService) Decrypt(encoded string) (string, error) {
+	if s == nil {
+		return "", errors.New("credential encryption service is not configured")
+	}
 	data, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return "", fmt.Errorf("failed to base64 decode: %w", err)

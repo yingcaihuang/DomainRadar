@@ -133,6 +133,20 @@ func TestRegistrarCredential_Fields(t *testing.T) {
 	assert.Equal(t, "custom_value", cred.Extra["custom_field"])
 }
 
+func TestParseRegistrarCredential(t *testing.T) {
+	cred, err := ParseRegistrarCredential(`{"token":"test-token","account_id":"cf-account","api_key":"key","custom":"value"}`)
+	require.NoError(t, err)
+	assert.Equal(t, "test-token", cred.Token)
+	assert.Equal(t, "key", cred.APIKey)
+	assert.Equal(t, "cf-account", cred.Extra["account_id"])
+	assert.Equal(t, "value", cred.Extra["custom"])
+	assert.NotContains(t, cred.Extra, "token")
+	for _, input := range []string{`null`, `{}`, `invalid`, `{"token":123}`} {
+		_, err := ParseRegistrarCredential(input)
+		assert.Error(t, err, input)
+	}
+}
+
 func TestAdapterRegistry_ConcurrentAccess(t *testing.T) {
 	registry := NewAdapterRegistry()
 

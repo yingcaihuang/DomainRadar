@@ -1,0 +1,3 @@
+ALTER TABLE registrar_accounts
+    ADD COLUMN IF NOT EXISTS auto_sync_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS full_import_enabled BOOLEAN NOT NULL DEFAULT TRUE;

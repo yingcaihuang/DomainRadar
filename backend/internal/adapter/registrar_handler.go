@@ -111,8 +111,10 @@ type CreateRegistrarRequest struct {
 
 // UpdateRegistrarRequest is the request body for updating a registrar account.
 type UpdateRegistrarRequest struct {
-	AccountName string            `json:"account_name"`
-	Credentials map[string]string `json:"credentials,omitempty"`
+	AccountName       string            `json:"account_name"`
+	Credentials       map[string]string `json:"credentials,omitempty"`
+	AutoSyncEnabled   *bool             `json:"auto_sync_enabled"`
+	FullImportEnabled *bool             `json:"full_import_enabled"`
 }
 
 // RegistrarAccountResponse is the API response for a registrar account.
@@ -125,6 +127,8 @@ type RegistrarAccountResponse struct {
 	Credentials       map[string]string `json:"credentials"`
 	Status            string            `json:"status"`
 	SyncIntervalHours int               `json:"sync_interval_hours"`
+	AutoSyncEnabled   bool              `json:"auto_sync_enabled"`
+	FullImportEnabled bool              `json:"full_import_enabled"`
 	LastSyncAt        *time.Time        `json:"last_sync_at"`
 	DomainCount       int               `json:"domain_count"`
 	CreatedAt         time.Time         `json:"created_at"`
@@ -298,10 +302,23 @@ func (h *RegistrarHandler) UpdateRegistrar(c *gin.Context) {
 	}
 
 	changes := make(map[string]interface{})
+	updates := make(map[string]interface{})
+
+	if req.AutoSyncEnabled != nil {
+		account.AutoSyncEnabled = *req.AutoSyncEnabled
+		changes["auto_sync_enabled"] = *req.AutoSyncEnabled
+		updates["auto_sync_enabled"] = *req.AutoSyncEnabled
+	}
+	if req.FullImportEnabled != nil {
+		account.FullImportEnabled = *req.FullImportEnabled
+		changes["full_import_enabled"] = *req.FullImportEnabled
+		updates["full_import_enabled"] = *req.FullImportEnabled
+	}
 
 	if req.AccountName != "" {
 		account.AccountName = req.AccountName
 		changes["account_name"] = req.AccountName
+		updates["account_name"] = req.AccountName
 	}
 
 	if req.Credentials != nil {
@@ -320,9 +337,10 @@ func (h *RegistrarHandler) UpdateRegistrar(c *gin.Context) {
 		}
 		account.CredentialsEncrypted = encryptedCreds
 		changes["credentials"] = "******"
+		updates["credentials_encrypted"] = encryptedCreds
 	}
 
-	if err := h.db.Save(&account).Error; err != nil {
+	if err := h.db.Model(&account).Updates(updates).Error; err != nil {
 		h.logger.Error("failed to update registrar account", zap.Error(err))
 		errors.ErrorResponse(c, errors.InternalServer("failed to update registrar account"))
 		return
@@ -599,37 +617,7 @@ func (h *RegistrarHandler) decryptCredentials(encrypted string) (*RegistrarCrede
 		return nil, fmt.Errorf("failed to decrypt credentials: %w", err)
 	}
 
-	var credsMap map[string]string
-	if err := json.Unmarshal([]byte(plaintext), &credsMap); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal credentials: %w", err)
-	}
-
-	cred := &RegistrarCredential{
-		APIKey:          credsMap["api_key"],
-		APISecret:       credsMap["api_secret"],
-		Token:           credsMap["token"],
-		Username:        credsMap["username"],
-		AccessKeyID:     credsMap["access_key_id"],
-		SecretAccessKey: credsMap["secret_access_key"],
-		IPWhitelist:     credsMap["ip_whitelist"],
-	}
-
-	// Put any extra fields into the Extra map
-	knownFields := map[string]bool{
-		"api_key": true, "api_secret": true, "token": true,
-		"username": true, "access_key_id": true, "secret_access_key": true,
-		"ip_whitelist": true,
-	}
-	for k, v := range credsMap {
-		if !knownFields[k] {
-			if cred.Extra == nil {
-				cred.Extra = make(map[string]string)
-			}
-			cred.Extra[k] = v
-		}
-	}
-
-	return cred, nil
+	return ParseRegistrarCredential(plaintext)
 }
 
 // maskCredentials decrypts credentials and returns them with values masked (last 4 chars visible).
@@ -671,6 +659,8 @@ func (h *RegistrarHandler) buildAccountResponse(account *domain.RegistrarAccount
 		Credentials:       maskedCreds,
 		Status:            account.Status,
 		SyncIntervalHours: account.SyncIntervalHours,
+		AutoSyncEnabled:   account.AutoSyncEnabled,
+		FullImportEnabled: account.FullImportEnabled,
 		LastSyncAt:        account.LastSyncAt,
 		DomainCount:       account.DomainCount,
 		CreatedAt:         account.CreatedAt,

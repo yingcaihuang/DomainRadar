@@ -25,8 +25,11 @@ type MergeResult struct {
 // fields (group_id, notes, tags). New domains are created with data_source_type="api".
 // Returns the number of domains synced, updated, and any error encountered.
 func MergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.NormalizedDomain, logger *zap.Logger) (synced int, updated int, err error) {
+	return mergeDomains(db, accountID, remoteDomains, logger, true)
+}
+
+func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.NormalizedDomain, logger *zap.Logger, fullImport bool) (synced int, updated int, err error) {
 	startTime := time.Now()
-	synced = len(remoteDomains)
 	var errors []string
 
 	presentNames := make([]string, 0, len(remoteDomains))
@@ -38,6 +41,10 @@ func MergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 		result := db.Where("domain_name = ?", remote.DomainName).First(&existing)
 
 		if result.Error == gorm.ErrRecordNotFound {
+			if !fullImport {
+				continue
+			}
+			synced++
 			// Create new record with API data.
 			newDomain := remote
 			newDomain.DataSourceType = "api"
@@ -67,6 +74,10 @@ func MergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 			}
 			continue
 		} else {
+			if !fullImport && (existing.RegistrarAccountID == nil || *existing.RegistrarAccountID != accountID) {
+				continue
+			}
+			synced++
 			// Domain exists — detect expiration change before updating.
 			expirationChanged := DetectExpirationChange(existing.ExpirationDate, remote.ExpirationDate)
 

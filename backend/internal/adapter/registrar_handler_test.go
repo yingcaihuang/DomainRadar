@@ -150,6 +150,8 @@ func TestCreateRegistrar_Success(t *testing.T) {
 	assert.Equal(t, "godaddy", data.RegistrarType)
 	assert.Equal(t, "GoDaddy", data.DisplayName)
 	assert.Equal(t, "disconnected", data.Status)
+	assert.True(t, data.AutoSyncEnabled)
+	assert.True(t, data.FullImportEnabled)
 
 	// Verify credentials are masked (last 4 chars visible)
 	// "test-key-12345678" = 17 chars → 13 asterisks + "5678"
@@ -361,6 +363,56 @@ func TestUpdateRegistrar_NotFound(t *testing.T) {
 	ts.router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestUpdateRegistrar_SyncOptions(t *testing.T) {
+	ts := newTestSetup(t)
+	config := domain.RegistrarConfig{RegistrarType: "godaddy", DisplayName: "GoDaddy"}
+	require.NoError(t, ts.db.Create(&config).Error)
+	encrypted, err := ts.cryptoService.Encrypt(`{"api_key":"test-key"}`)
+	require.NoError(t, err)
+	account := domain.RegistrarAccount{
+		RegistrarConfigID: config.ID, AccountName: "Sync options", CredentialsEncrypted: encrypted,
+	}
+	require.NoError(t, ts.db.Create(&account).Error)
+	require.True(t, account.AutoSyncEnabled)
+	require.True(t, account.FullImportEnabled)
+
+	for _, tc := range []struct {
+		body string
+		auto bool
+		full bool
+	}{
+		{`{"auto_sync_enabled":false}`, false, true},
+		{`{"full_import_enabled":false}`, false, false},
+		{`{"account_name":"Renamed"}`, false, false},
+		{`{"auto_sync_enabled":true}`, true, false},
+		{`{"full_import_enabled":true}`, true, true},
+	} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/v1/registrars/%d", account.ID), bytes.NewBufferString(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		ts.router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var response struct {
+			Data RegistrarAccountResponse `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+		assert.Equal(t, tc.auto, response.Data.AutoSyncEnabled)
+		assert.Equal(t, tc.full, response.Data.FullImportEnabled)
+		require.NoError(t, ts.db.First(&account, account.ID).Error)
+		assert.Equal(t, tc.auto, account.AutoSyncEnabled)
+		assert.Equal(t, tc.full, account.FullImportEnabled)
+	}
+
+	var logs []domain.AuditLog
+	require.NoError(t, ts.db.Where("action_type = ?", "UPDATE").Order("id").Find(&logs).Error)
+	require.Len(t, logs, 5)
+	var changed map[string]interface{}
+	require.NoError(t, json.Unmarshal(logs[0].ChangedFields, &changed))
+	assert.Equal(t, map[string]interface{}{"auto_sync_enabled": false}, changed)
+	require.NoError(t, json.Unmarshal(logs[1].ChangedFields, &changed))
+	assert.Equal(t, false, changed["full_import_enabled"])
 }
 
 func TestDeleteRegistrar_Success(t *testing.T) {

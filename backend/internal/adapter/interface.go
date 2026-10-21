@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -22,6 +23,31 @@ type RegistrarCredential struct {
 
 	// Extra holds any additional registrar-specific credential fields.
 	Extra map[string]string `json:"extra,omitempty"`
+}
+
+// ParseRegistrarCredential decodes the flat credential map stored by registrar handlers.
+func ParseRegistrarCredential(plaintext string) (*RegistrarCredential, error) {
+	var fields map[string]string
+	if err := json.Unmarshal([]byte(plaintext), &fields); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal credentials: %w", err)
+	}
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("credentials must not be empty")
+	}
+	cred := &RegistrarCredential{
+		APIKey:          fields["api_key"],
+		APISecret:       fields["api_secret"],
+		Token:           fields["token"],
+		Username:        fields["username"],
+		AccessKeyID:     fields["access_key_id"],
+		SecretAccessKey: fields["secret_access_key"],
+		IPWhitelist:     fields["ip_whitelist"],
+	}
+	for _, key := range []string{"api_key", "api_secret", "token", "username", "access_key_id", "secret_access_key", "ip_whitelist"} {
+		delete(fields, key)
+	}
+	cred.Extra = fields
+	return cred, nil
 }
 
 // RegistrarAdapter defines the contract for all registrar integrations.

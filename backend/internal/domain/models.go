@@ -64,6 +64,8 @@ type RegistrarAccount struct {
 	CredentialsEncrypted string     `gorm:"type:text" json:"-"`
 	Status               string     `gorm:"size:20;default:'disconnected'" json:"status"` // "connected", "disconnected", "error"
 	SyncIntervalHours    int        `gorm:"default:24" json:"sync_interval_hours"`
+	AutoSyncEnabled      bool       `gorm:"not null;default:true" json:"auto_sync_enabled"`
+	FullImportEnabled    bool       `gorm:"not null;default:true" json:"full_import_enabled"`
 	LastSyncAt           *time.Time `json:"last_sync_at"`
 	DomainCount          int        `gorm:"default:0" json:"domain_count"`
 	CreatedAt            time.Time  `json:"created_at"`

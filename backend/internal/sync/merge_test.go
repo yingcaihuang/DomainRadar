@@ -25,6 +25,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&domain.RegistrarConfig{},
 		&domain.Group{},
 		&domain.Tag{},
+		&domain.SyncLog{},
 	)
 	require.NoError(t, err, "failed to auto-migrate models")
 
@@ -89,6 +90,36 @@ func TestMergeDomains_CreatesNewDomains(t *testing.T) {
 		assert.Equal(t, 0, d.AbsenceCount)
 		assert.NotNil(t, d.LastSyncAt)
 	}
+}
+
+func TestMergeDomains_WithoutFullImport(t *testing.T) {
+	db := setupTestDB(t)
+	accountID := uint(1)
+	otherID := uint(2)
+	existing := []domain.NormalizedDomain{
+		{DomainName: "owned.test", RegistrarAccountID: &accountID, Status: "active"},
+		{DomainName: "missing.test", RegistrarAccountID: &accountID, Status: "active", AbsenceCount: 1},
+		{DomainName: "other.test", RegistrarAccountID: &otherID, Status: "active"},
+		{DomainName: "manual.test", Status: "active"},
+	}
+	require.NoError(t, db.Create(&existing).Error)
+	remote := []domain.NormalizedDomain{
+		{DomainName: "owned.test", Status: "locked"},
+		{DomainName: "other.test", Status: "locked"},
+		{DomainName: "manual.test", Status: "locked"},
+		{DomainName: "new.test", Status: "active"},
+	}
+	synced, updated, err := mergeDomains(db, accountID, remote, newTestLogger(), false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, synced)
+	assert.Equal(t, 1, updated)
+	var domains []domain.NormalizedDomain
+	require.NoError(t, db.Order("id").Find(&domains).Error)
+	require.Len(t, domains, 4)
+	assert.Equal(t, "locked", domains[0].Status)
+	assert.Equal(t, "unverified-removed", domains[1].Status)
+	assert.Equal(t, "active", domains[2].Status)
+	assert.Equal(t, "active", domains[3].Status)
 }
 
 func TestMergeDomains_UpdatesExistingDomain_PreservesUserFields(t *testing.T) {

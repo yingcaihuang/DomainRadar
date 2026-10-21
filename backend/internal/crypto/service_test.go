@@ -12,6 +12,14 @@ import (
 
 const testKey = "01234567890123456789012345678901" // exactly 32 bytes
 
+func TestNilCryptoService(t *testing.T) {
+	var svc *CryptoService
+	_, err := svc.Encrypt("credential")
+	require.ErrorContains(t, err, "not configured")
+	_, err = svc.Decrypt("ciphertext")
+	require.ErrorContains(t, err, "not configured")
+}
+
 func TestNewCryptoService_ValidKey(t *testing.T) {
 	svc, err := NewCryptoService(testKey)
 	require.NoError(t, err)

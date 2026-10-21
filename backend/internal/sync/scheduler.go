@@ -2,7 +2,6 @@ package sync
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -123,8 +122,8 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 		return fmt.Errorf("failed to decrypt credentials for account %d: %w", accountID, err)
 	}
 
-	var credential adapter.RegistrarCredential
-	if err := json.Unmarshal([]byte(credJSON), &credential); err != nil {
+	credential, err := adapter.ParseRegistrarCredential(credJSON)
+	if err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", 0, 0, fmt.Sprintf("credential parse failed: %v", err))
 		return fmt.Errorf("failed to parse credentials for account %d: %w", accountID, err)
 	}
@@ -137,7 +136,7 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 	}
 
 	// Call adapter.ListDomains with the timeout context.
-	domains, err := registrarAdapter.ListDomains(cycleCtx, &credential)
+	domains, err := registrarAdapter.ListDomains(cycleCtx, credential)
 	if err != nil {
 		// Check if the error was due to context deadline exceeded (timeout).
 		if cycleCtx.Err() == context.DeadlineExceeded {
@@ -153,26 +152,32 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 	}
 
 	// Merge fetched domains into the database.
-	synced, mergeUpdated, mergeErr := MergeDomains(s.db.WithContext(ctx), accountID, domains, s.logger)
+	synced, mergeUpdated, mergeErr := mergeDomains(s.db.WithContext(cycleCtx), accountID, domains, s.logger, account.FullImportEnabled)
 	if mergeErr != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, fmt.Sprintf("merge failed: %v", mergeErr))
 		return fmt.Errorf("merge failed for account %d: %w", accountID, mergeErr)
 	}
 
-	// Update SyncLog with success.
-	domainsSynced := synced
-	s.finalizeSyncLog(ctx, &syncLog, "completed", domainsSynced, mergeUpdated, "")
-
 	// Update account's last sync time and domain count.
+	var domainCount int64
+	if err := s.db.WithContext(cycleCtx).Model(&domain.NormalizedDomain{}).
+		Where("registrar_account_id = ?", accountID).Count(&domainCount).Error; err != nil {
+		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, err.Error())
+		return fmt.Errorf("failed to count domains for account %d: %w", accountID, err)
+	}
 	now := time.Now()
-	s.db.WithContext(ctx).Model(&account).Updates(map[string]interface{}{
+	if err := s.db.WithContext(cycleCtx).Model(&account).Updates(map[string]interface{}{
 		"last_sync_at": now,
-		"domain_count": domainsSynced,
-	})
+		"domain_count": domainCount,
+	}).Error; err != nil {
+		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, err.Error())
+		return fmt.Errorf("failed to update sync state for account %d: %w", accountID, err)
+	}
+	s.finalizeSyncLog(ctx, &syncLog, "completed", synced, mergeUpdated, "")
 
 	s.logger.Info("Sync cycle completed",
 		zap.Uint("account_id", accountID),
-		zap.Int("domains_synced", domainsSynced),
+		zap.Int("domains_synced", synced),
 	)
 
 	return nil
@@ -226,6 +231,7 @@ func (s *SyncScheduler) checkAndScheduleAccounts(ctx context.Context) {
 	if err := s.db.WithContext(ctx).
 		Preload("RegistrarConfig").
 		Where("status = ?", "connected").
+		Where("auto_sync_enabled = ?", true).
 		Find(&accounts).Error; err != nil {
 		s.logger.Error("Failed to query registrar accounts", zap.Error(err))
 		return
@@ -264,6 +270,8 @@ func (s *SyncScheduler) isDue(account domain.RegistrarAccount) bool {
 			// Never synced — it's due.
 			return true
 		}
+		lastSync = *account.LastSyncAt
+	} else if account.LastSyncAt != nil && account.LastSyncAt.After(lastSync) {
 		lastSync = *account.LastSyncAt
 	}
 

@@ -126,7 +126,7 @@ export const registrarApi = {
   list: () => request<{ data: RegistrarAccount[] }>('/registrars'),
   create: (data: { registrar_type: string; display_name: string; account_name: string; credentials: Record<string, string> }) =>
     request<{ data: RegistrarAccount }>('/registrars', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: number, data: { account_name?: string; credentials?: Record<string, string> }) =>
+  update: (id: number, data: { account_name?: string; credentials?: Record<string, string>; auto_sync_enabled?: boolean; full_import_enabled?: boolean }) =>
     request<{ data: RegistrarAccount }>(`/registrars/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: number) => request(`/registrars/${id}`, { method: 'DELETE' }),
   test: async (id: number) => { const res = await request<{ status: string; message: string }>(`/registrars/${id}/test`, { method: 'POST' }); if (res.status === 'disconnected') throw new Error(res.message); return res; },

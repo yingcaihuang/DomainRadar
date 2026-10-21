@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, Alert, App } from 'antd';
-import { PlusOutlined, SyncOutlined, ApiOutlined, EditOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, Alert, App, Dropdown, Switch } from 'antd';
+import { PlusOutlined, SyncOutlined, ApiOutlined, EditOutlined, DownOutlined } from '@ant-design/icons';
 import { registrarApi, tagApi, groupApi } from '../services';
+import type { RegistrarAccount } from '../types';
 
 
 const registrarTypes = [
@@ -21,6 +22,7 @@ const registrarCredentialFields: Record<string, { key: string; label: string; re
   ],
   cloudflare: [
     { key: 'token', label: 'API Token', required: true },
+    { key: 'account_id', label: 'Account ID', required: true },
   ],
   alibaba: [
     { key: 'access_key_id', label: 'Access Key ID', required: true },
@@ -46,7 +48,7 @@ interface PreviewDomain {
 }
 
 export function RegistrarSettingsPage() {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
@@ -86,9 +88,9 @@ export function RegistrarSettingsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => registrarApi.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof registrarApi.update>[1] }) => registrarApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['registrars'] });
+      return queryClient.invalidateQueries({ queryKey: ['registrars'] });
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -217,7 +219,7 @@ export function RegistrarSettingsPage() {
     {
       title: '操作',
       key: 'actions',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: RegistrarAccount) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>编辑</Button>
           <Button size="small" icon={<ApiOutlined />} loading={testingId === record.id} onClick={() => {
@@ -229,6 +231,31 @@ export function RegistrarSettingsPage() {
           }}>测试</Button>
           <Button size="small" icon={<SyncOutlined />} onClick={() => handleSyncPreview(record.id)}>同步</Button>
           <Button size="small" danger onClick={() => modal.confirm({ title: '确定删除此注册商？', onOk: () => deleteMutation.mutate(record.id) })}>删除</Button>
+          <Dropdown trigger={['click']} menu={{
+            selectable: false,
+            items: [
+              {
+                key: 'auto-sync',
+                label: <Space onClick={event => event.stopPropagation()} style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <span title="按账户同步周期自动更新域名；关闭后仍可手动同步">自动同步</span>
+                  <Switch size="small" aria-label={`${record.account_name} 自动同步`}
+                    checked={record.auto_sync_enabled} disabled={updateMutation.isPending}
+                    onChange={checked => updateMutation.mutate({ id: record.id, data: { auto_sync_enabled: checked } })} />
+                </Space>,
+              },
+              {
+                key: 'full-import',
+                label: <Space onClick={event => event.stopPropagation()} style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <span title="开启后同步会导入账户全部域名；关闭后仅更新已导入域名，不影响手动选择导入">全量导入</span>
+                  <Switch size="small" aria-label={`${record.account_name} 全量导入`}
+                    checked={record.full_import_enabled} disabled={updateMutation.isPending}
+                    onChange={checked => updateMutation.mutate({ id: record.id, data: { full_import_enabled: checked } })} />
+                </Space>,
+              },
+            ],
+          }}>
+            <Button size="small">更多 <DownOutlined /></Button>
+          </Dropdown>
         </Space>
       ),
     },

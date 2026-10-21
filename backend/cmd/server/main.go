@@ -108,6 +108,11 @@ func main() {
 	adapterRegistry.Register(adapterTencent.New())
 	// Sync scheduler for manual and automatic domain sync
 	syncScheduler := sync.NewSyncScheduler(db, adapterRegistry, cryptoService, logger)
+	if cryptoService != nil {
+		syncScheduler.Start(context.Background())
+	} else {
+		logger.Warn("Automatic registrar sync disabled: credential encryption service is not configured")
+	}
 	registrarHandler := adapter.NewRegistrarHandler(db, cryptoService, adapterRegistry, auditService, logger, adapter.WithSyncTrigger(syncScheduler))
 
 	// Notification handler with channel registry
