@@ -360,7 +360,9 @@ export function DomainListPage() {
           columns={columns}
           dataSource={data?.domains || []}
           loading={isLoading}
-          onChange={(_pagination, _filters, sorter: any) => {
+          onChange={(_pagination, _filters, sorter: any, extra) => {
+            // 翻页时这里也会触发，重置页码会覆盖 pagination.onChange 刚设置的页码
+            if (extra.action === 'paginate') return;
             if (sorter.order) {
               setSortField(sorter.field);
               setSortOrder(sorter.order);
