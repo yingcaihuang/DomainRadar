@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -180,5 +181,67 @@ func (c *WebhookChannel) postPayload(ctx context.Context, url string, headers ma
 		return fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
+	// 企业微信/钉钉/飞书/Slack 在 key 无效或消息被拒收时也返回 HTTP 200，
+	// 错误码在 JSON body 里 — 必须检查业务码，否则误报测试通过。
+	return checkWebhookBusinessCode(url, respBody)
+}
+
+// checkWebhookBusinessCode inspects a 2xx response body for platform-specific
+// error codes. Unknown platforms and non-JSON bodies pass through untouched.
+func checkWebhookBusinessCode(url string, body []byte) error {
+	var result map[string]interface{}
+	if len(body) == 0 || body[0] != '{' || json.Unmarshal(body, &result) != nil {
+		return nil
+	}
+
+	switch {
+	case strings.Contains(url, "qyapi.weixin.qq.com"), strings.Contains(url, "dingtalk.com"):
+		// {"errcode":0,"errmsg":"ok"}
+		if code, ok := jsonNumber(result["errcode"]); ok && code != 0 {
+			return fmt.Errorf("webhook rejected (code %s): %s", jsonNumberString(code), jsonString(result["errmsg"]))
+		}
+	case strings.Contains(url, "feishu.cn"), strings.Contains(url, "larksuite.com"):
+		// {"code":0,"msg":"success"}，旧版机器人是 {"StatusCode":0,"StatusMessage":"success"}
+		code, hasCode := jsonNumber(result["code"])
+		msg := jsonString(result["msg"])
+		if !hasCode {
+			code, hasCode = jsonNumber(result["StatusCode"])
+			msg = jsonString(result["StatusMessage"])
+		}
+		if hasCode && code != 0 {
+			return fmt.Errorf("feishu webhook rejected (code %s): %s", jsonNumberString(code), msg)
+		}
+	case strings.Contains(url, "hooks.slack.com"):
+		// {"ok":true}
+		if ok, isBool := result["ok"].(bool); isBool && !ok {
+			return fmt.Errorf("slack webhook rejected: %s", jsonString(result["error"]))
+		}
+	}
 	return nil
+}
+
+// jsonNumber extracts a numeric field that platforms may encode as number or string.
+func jsonNumber(v interface{}) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case string:
+		if f, err := strconv.ParseFloat(n, 64); err == nil {
+			return f, true
+		}
+	}
+	return 0, false
+}
+
+// jsonNumberString formats a numeric code without trailing zeros.
+func jsonNumberString(code float64) string {
+	return strconv.FormatFloat(code, 'f', -1, 64)
+}
+
+// jsonString extracts a string field, tolerating missing or non-string values.
+func jsonString(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
 }

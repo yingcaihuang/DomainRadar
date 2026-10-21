@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,7 +154,7 @@ func TestWebhookChannel_TestConnection_Success(t *testing.T) {
 
 	ch := NewWebhookChannelWithClient(server.URL, nil, server.Client())
 
-	config := &ChannelConfig{Settings: map[string]string{"url": server.URL}}
+	config := &ChannelConfig{Settings: map[string]string{"webhook_url": server.URL}}
 	err := ch.TestConnection(context.Background(), config)
 	require.NoError(t, err)
 
@@ -172,7 +173,7 @@ func TestWebhookChannel_TestConnection_Failure(t *testing.T) {
 
 	ch := NewWebhookChannelWithClient(server.URL, nil, server.Client())
 
-	config := &ChannelConfig{Settings: map[string]string{"url": server.URL}}
+	config := &ChannelConfig{Settings: map[string]string{"webhook_url": server.URL}}
 	err := ch.TestConnection(context.Background(), config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "webhook returned status 403")
@@ -181,8 +182,8 @@ func TestWebhookChannel_TestConnection_Failure(t *testing.T) {
 func TestNewWebhookChannel_FromConfig(t *testing.T) {
 	config := &ChannelConfig{
 		Settings: map[string]string{
-			"url":     "https://hooks.example.com/webhook",
-			"headers": "Authorization:Bearer token123,X-Source:DomainRadar",
+			"webhook_url": "https://hooks.example.com/webhook",
+			"headers":     "Authorization:Bearer token123,X-Source:DomainRadar",
 		},
 	}
 
@@ -190,6 +191,95 @@ func TestNewWebhookChannel_FromConfig(t *testing.T) {
 	assert.Equal(t, "https://hooks.example.com/webhook", ch.TargetURL)
 	assert.Equal(t, "Bearer token123", ch.Headers["Authorization"])
 	assert.Equal(t, "DomainRadar", ch.Headers["X-Source"])
+}
+
+// stubTransport serves a canned HTTP response regardless of the request URL,
+// letting tests target platform-style URLs (qyapi.weixin.qq.com 等) without DNS.
+type stubTransport struct {
+	status int
+	body   string
+}
+
+func (t *stubTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(strings.NewReader(t.body)),
+		Header:     http.Header{},
+	}, nil
+}
+
+func TestWebhookChannel_Send_PlatformBusinessError(t *testing.T) {
+	ch := &WebhookChannel{
+		TargetURL: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=wrong-key",
+		HTTPClient: &http.Client{Transport: &stubTransport{
+			status: 200,
+			body:   `{"errcode":93000,"errmsg":"invalid webhook url"}`,
+		}},
+	}
+
+	err := ch.Send(context.Background(), &Notification{Severity: "warning", AlertType: "expiration"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "93000")
+	assert.Contains(t, err.Error(), "invalid webhook url")
+}
+
+func TestWebhookChannel_Send_PlatformBusinessSuccess(t *testing.T) {
+	for _, tc := range []struct {
+		url  string
+		body string
+	}{
+		{"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=k", `{"errcode":0,"errmsg":"ok"}`},
+		{"https://oapi.dingtalk.com/robot/send?access_token=x", `{"errcode":0,"errmsg":"ok"}`},
+		{"https://open.feishu.cn/open-apis/bot/v2/hook/x", `{"code":0,"msg":"success"}`},
+		{"https://open.feishu.cn/open-apis/bot/v2/hook/x", `{"StatusCode":0,"StatusMessage":"success"}`},
+		{"https://hooks.slack.com/services/T/B/X", `{"ok":true}`},
+		// 未知平台 HTTP 200 保持原语义，不因 body 判失败
+		{"https://hooks.example.com/webhook", `{"status":"accepted"}`},
+	} {
+		ch := &WebhookChannel{
+			TargetURL: tc.url,
+			HTTPClient: &http.Client{Transport: &stubTransport{
+				status: 200,
+				body:   tc.body,
+			}},
+		}
+		err := ch.Send(context.Background(), &Notification{Severity: "informational", AlertType: "test"})
+		assert.NoError(t, err, "%s %s", tc.url, tc.body)
+	}
+}
+
+func TestCheckWebhookBusinessCode(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		body    string
+		wantErr string
+	}{
+		{"wecom error", "https://qyapi.weixin.qq.com/send?key=x", `{"errcode":93000,"errmsg":"invalid webhook url"}`, "93000"},
+		{"wecom errcode as string", "https://qyapi.weixin.qq.com/send?key=x", `{"errcode":"93000","errmsg":"bad"}`, "93000"},
+		{"wecom ok", "https://qyapi.weixin.qq.com/send?key=x", `{"errcode":0}`, ""},
+		{"dingtalk error", "https://oapi.dingtalk.com/robot/send", `{"errcode":310000,"errmsg":"keywords not in content"}`, "310000"},
+		{"dingtalk ok", "https://oapi.dingtalk.com/robot/send", `{"errcode":0}`, ""},
+		{"feishu error", "https://open.feishu.cn/hook/x", `{"code":19021,"msg":"Key has expired"}`, "19021"},
+		{"feishu legacy error", "https://open.feishu.cn/hook/x", `{"StatusCode":1,"StatusMessage":"failed"}`, "failed"},
+		{"feishu ok", "https://open.feishu.cn/hook/x", `{"code":0}`, ""},
+		{"slack error", "https://hooks.slack.com/services/T/B/X", `{"ok":false,"error":"invalid_payload"}`, "invalid_payload"},
+		{"slack ok", "https://hooks.slack.com/services/T/B/X", `{"ok":true}`, ""},
+		{"generic 200 passes", "https://example.com/hook", `{"errcode":1}`, ""},
+		{"non-json body", "https://qyapi.weixin.qq.com/send?key=x", `OK`, ""},
+		{"empty body", "https://qyapi.weixin.qq.com/send?key=x", ``, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkWebhookBusinessCode(tc.url, []byte(tc.body))
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
 }
 
 // --- WeChatWorkChannel tests (using httptest) ---
