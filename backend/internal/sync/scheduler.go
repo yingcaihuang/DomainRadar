@@ -38,6 +38,7 @@ type SyncScheduler struct {
 	adapterRegistry *adapter.AdapterRegistry
 	cryptoService   *crypto.CryptoService
 	logger          *zap.Logger
+	OnAlertCreated  func(alert *domain.Alert)
 
 	// mu protects lastSyncTimes.
 	mu            sync.RWMutex
@@ -119,12 +120,14 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 	credJSON, err := s.cryptoService.Decrypt(account.CredentialsEncrypted)
 	if err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", 0, 0, fmt.Sprintf("credential decryption failed: %v", err))
+		s.handleSyncOutcome(ctx, &account, false, "credential decryption failed")
 		return fmt.Errorf("failed to decrypt credentials for account %d: %w", accountID, err)
 	}
 
 	credential, err := adapter.ParseRegistrarCredential(credJSON)
 	if err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", 0, 0, fmt.Sprintf("credential parse failed: %v", err))
+		s.handleSyncOutcome(ctx, &account, false, "credential parse failed")
 		return fmt.Errorf("failed to parse credentials for account %d: %w", accountID, err)
 	}
 
@@ -132,6 +135,7 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 	registrarAdapter, err := s.adapterRegistry.Get(account.RegistrarConfig.RegistrarType)
 	if err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", 0, 0, fmt.Sprintf("adapter not found: %v", err))
+		s.handleSyncOutcome(ctx, &account, false, "adapter not found")
 		return fmt.Errorf("no adapter for registrar type %s: %w", account.RegistrarConfig.RegistrarType, err)
 	}
 
@@ -145,9 +149,11 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 				zap.Uint("account_id", accountID),
 				zap.Duration("max_duration", MaxCycleDuration),
 			)
+			s.handleSyncOutcome(ctx, &account, false, "sync cycle timed out")
 			return fmt.Errorf("sync cycle timed out for account %d", accountID)
 		}
 		s.finalizeSyncLog(ctx, &syncLog, "failed", 0, 0, fmt.Sprintf("list domains failed: %v", err))
+		s.handleSyncOutcome(ctx, &account, false, fmt.Sprintf("list domains failed: %v", err))
 		return fmt.Errorf("failed to list domains for account %d: %w", accountID, err)
 	}
 
@@ -155,25 +161,45 @@ func (s *SyncScheduler) RunSyncCycle(ctx context.Context, accountID uint) error 
 	synced, mergeUpdated, mergeErr := mergeDomains(s.db.WithContext(cycleCtx), accountID, domains, s.logger, account.FullImportEnabled)
 	if mergeErr != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, fmt.Sprintf("merge failed: %v", mergeErr))
+		s.handleSyncOutcome(ctx, &account, false, fmt.Sprintf("merge failed: %v", mergeErr))
 		return fmt.Errorf("merge failed for account %d: %w", accountID, mergeErr)
 	}
 
-	// Update account's last sync time and domain count.
+	// Update account's last sync time, domain count, and sync interval.
 	var domainCount int64
 	if err := s.db.WithContext(cycleCtx).Model(&domain.NormalizedDomain{}).
 		Where("registrar_account_id = ?", accountID).Count(&domainCount).Error; err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, err.Error())
+		s.handleSyncOutcome(ctx, &account, false, "failed to count domains")
 		return fmt.Errorf("failed to count domains for account %d: %w", accountID, err)
 	}
 	now := time.Now()
-	if err := s.db.WithContext(cycleCtx).Model(&account).Updates(map[string]interface{}{
+	accountUpdates := map[string]interface{}{
 		"last_sync_at": now,
 		"domain_count": domainCount,
-	}).Error; err != nil {
+	}
+	// Recalculate the sync interval from the account's most imminent
+	// expiration. This adapts in both directions: domains nearing expiry
+	// speed the account up, renewals slow it back down.
+	var expiries []*time.Time
+	if err := s.db.WithContext(cycleCtx).Model(&domain.NormalizedDomain{}).
+		Where("registrar_account_id = ? AND expiration_date IS NOT NULL", accountID).
+		Select("expiration_date").Find(&expiries).Error; err == nil && len(expiries) > 0 {
+		minExpiry := *expiries[0]
+		for _, exp := range expiries[1:] {
+			if exp.Before(minExpiry) {
+				minExpiry = *exp
+			}
+		}
+		accountUpdates["sync_interval_hours"] = int(CalculateSyncInterval(minExpiry).Hours())
+	}
+	if err := s.db.WithContext(cycleCtx).Model(&account).Updates(accountUpdates).Error; err != nil {
 		s.finalizeSyncLog(ctx, &syncLog, "failed", synced, mergeUpdated, err.Error())
+		s.handleSyncOutcome(ctx, &account, false, "failed to update sync state")
 		return fmt.Errorf("failed to update sync state for account %d: %w", accountID, err)
 	}
 	s.finalizeSyncLog(ctx, &syncLog, "completed", synced, mergeUpdated, "")
+	s.handleSyncOutcome(ctx, &account, true, "")
 
 	s.logger.Info("Sync cycle completed",
 		zap.Uint("account_id", accountID),
@@ -197,6 +223,86 @@ func (s *SyncScheduler) finalizeSyncLog(ctx context.Context, syncLog *domain.Syn
 			zap.Uint("sync_log_id", syncLog.ID),
 			zap.Error(err),
 		)
+	}
+}
+
+// SyncFailureThreshold is the number of consecutive failed sync cycles before
+// a sync_failure alert is raised for the account.
+const SyncFailureThreshold = 2
+
+// handleSyncOutcome maintains the account's sync_failure alert lifecycle:
+// after SyncFailureThreshold consecutive failures an alert is created (with
+// dedup against an existing unacknowledged one); a successful cycle
+// auto-resolves any open sync_failure alert.
+func (s *SyncScheduler) handleSyncOutcome(ctx context.Context, account *domain.RegistrarAccount, success bool, errMsg string) {
+	if success {
+		if err := s.db.WithContext(ctx).Model(&domain.Alert{}).
+			Where("registrar_account_id = ? AND alert_type = ? AND acknowledged = ?", account.ID, "sync_failure", false).
+			Updates(map[string]interface{}{"acknowledged": true, "acknowledged_at": time.Now()}).Error; err != nil {
+			s.logger.Error("failed to auto-resolve sync_failure alert",
+				zap.Uint("account_id", account.ID),
+				zap.Error(err),
+			)
+		}
+		return
+	}
+
+	// Failure: check whether the last SyncFailureThreshold sync logs
+	// (including the one just written) all failed.
+	var statuses []string
+	if err := s.db.WithContext(ctx).Model(&domain.SyncLog{}).
+		Where("registrar_account_id = ?", account.ID).
+		Order("started_at DESC").Limit(SyncFailureThreshold).
+		Pluck("status", &statuses).Error; err != nil || len(statuses) < SyncFailureThreshold {
+		return // not enough history yet, or query failed
+	}
+	for _, st := range statuses {
+		if st != "failed" && st != "timeout" {
+			return // a recent success breaks the streak
+		}
+	}
+
+	// Dedup: skip if an unacknowledged sync_failure alert already exists.
+	var existing domain.Alert
+	result := s.db.WithContext(ctx).Where(
+		"registrar_account_id = ? AND alert_type = ? AND acknowledged = ?",
+		account.ID, "sync_failure", false,
+	).First(&existing)
+	if result.Error == nil {
+		return // already alerting
+	}
+	if result.Error != gorm.ErrRecordNotFound {
+		s.logger.Error("failed to query existing sync_failure alert",
+			zap.Uint("account_id", account.ID),
+			zap.Error(result.Error),
+		)
+		return
+	}
+
+	alert := domain.Alert{
+		DomainID:           0, // account-level alert
+		RegistrarAccountID: &account.ID,
+		AlertType:          "sync_failure",
+		Severity:           "warning",
+		Message:            fmt.Sprintf("注册商账户 %s(%s) 连续 %d 次同步失败:%s", account.AccountName, account.RegistrarConfig.RegistrarType, SyncFailureThreshold, errMsg),
+		Acknowledged:       false,
+		DeliveryStatus:     "pending",
+		GeneratedAt:        time.Now(),
+	}
+	if err := s.db.WithContext(ctx).Create(&alert).Error; err != nil {
+		s.logger.Error("failed to create sync_failure alert",
+			zap.Uint("account_id", account.ID),
+			zap.Error(err),
+		)
+		return
+	}
+	s.logger.Warn("sync_failure alert created",
+		zap.Uint("account_id", account.ID),
+		zap.String("account_name", account.AccountName),
+		zap.String("error", errMsg),
+	)
+	if s.OnAlertCreated != nil {
+		s.OnAlertCreated(&alert)
 	}
 }
 

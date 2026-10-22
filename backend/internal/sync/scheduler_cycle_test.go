@@ -130,6 +130,146 @@ func TestCheckAndScheduleAccounts_SkipsDisabledAndDisconnected(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 }
 
+func TestSyncFailureAlert_CreatedAfterTwoConsecutiveFailures(t *testing.T) {
+	db := setupTestDB(t)
+	cryptoSvc, err := crypto.NewCryptoService("01234567890123456789012345678901")
+	require.NoError(t, err)
+	encrypted, err := cryptoSvc.Encrypt(`{"token":"test-token"}`)
+	require.NoError(t, err)
+	config := domain.RegistrarConfig{RegistrarType: "cloudflare", DisplayName: "Cloudflare"}
+	require.NoError(t, db.Create(&config).Error)
+	account := domain.RegistrarAccount{
+		RegistrarConfigID: config.ID, AccountName: "flaky",
+		CredentialsEncrypted: encrypted, Status: "connected", AutoSyncEnabled: false,
+	}
+	require.NoError(t, db.Create(&account).Error)
+
+	// Adapter always fails.
+	failing := &failingAdapter{registrarType: "cloudflare", listErr: assert.AnError}
+	registry := adapter.NewAdapterRegistry()
+	registry.Register(failing)
+	var dispatched []domain.Alert
+	scheduler := NewSyncScheduler(db, registry, cryptoSvc, zap.NewNop())
+	scheduler.OnAlertCreated = func(a *domain.Alert) { dispatched = append(dispatched, *a) }
+
+	// First failure: no alert yet (threshold is 2).
+	require.Error(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	var count int64
+	db.Model(&domain.Alert{}).Where("alert_type = ?", "sync_failure").Count(&count)
+	assert.EqualValues(t, 0, count, "single failure must not alert")
+
+	// Second consecutive failure: alert created and dispatched once.
+	require.Error(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	var alerts []domain.Alert
+	require.NoError(t, db.Where("alert_type = ?", "sync_failure").Find(&alerts).Error)
+	require.Len(t, alerts, 1)
+	assert.Equal(t, "warning", alerts[0].Severity)
+	require.NotNil(t, alerts[0].RegistrarAccountID)
+	assert.Equal(t, account.ID, *alerts[0].RegistrarAccountID)
+	assert.False(t, alerts[0].Acknowledged)
+	assert.Len(t, dispatched, 1, "webhook dispatch must fire exactly once")
+
+	// Third failure: dedup — still only one alert.
+	require.Error(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	db.Model(&domain.Alert{}).Where("alert_type = ?", "sync_failure").Count(&count)
+	assert.EqualValues(t, 1, count, "duplicate alerts must be suppressed while open")
+}
+
+func TestSyncFailureAlert_AutoResolvedOnSuccess(t *testing.T) {
+	db := setupTestDB(t)
+	cryptoSvc, err := crypto.NewCryptoService("01234567890123456789012345678901")
+	require.NoError(t, err)
+	encrypted, err := cryptoSvc.Encrypt(`{"token":"test-token"}`)
+	require.NoError(t, err)
+	config := domain.RegistrarConfig{RegistrarType: "cloudflare", DisplayName: "Cloudflare"}
+	require.NoError(t, db.Create(&config).Error)
+	account := domain.RegistrarAccount{
+		RegistrarConfigID: config.ID, AccountName: "recovering",
+		CredentialsEncrypted: encrypted, Status: "connected", AutoSyncEnabled: false,
+	}
+	require.NoError(t, db.Create(&account).Error)
+
+	failing := &failingAdapter{registrarType: "cloudflare", listErr: assert.AnError}
+	registry := adapter.NewAdapterRegistry()
+	registry.Register(failing)
+	scheduler := NewSyncScheduler(db, registry, cryptoSvc, zap.NewNop())
+
+	// Two failures raise the alert.
+	require.Error(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	require.Error(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	var alert domain.Alert
+	require.NoError(t, db.Where("alert_type = ?", "sync_failure").First(&alert).Error)
+
+	// Adapter recovers; next cycle resolves the alert.
+	registry.Register(&cycleAdapter{credentials: make(chan adapter.RegistrarCredential, 4)})
+	require.NoError(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+
+	var got domain.Alert
+	require.NoError(t, db.First(&got, alert.ID).Error)
+	assert.True(t, got.Acknowledged, "successful sync must auto-resolve the sync_failure alert")
+	require.NotNil(t, got.AcknowledgedAt)
+}
+
+// failingAdapter always fails ListDomains.
+type failingAdapter struct {
+	registrarType string
+	listErr       error
+}
+
+func (a *failingAdapter) RegistrarType() string { return a.registrarType }
+func (a *failingAdapter) TestConnection(context.Context, *adapter.RegistrarCredential) error {
+	return nil
+}
+func (a *failingAdapter) GetDomainDetail(context.Context, *adapter.RegistrarCredential, string) (*domain.NormalizedDomain, error) {
+	return nil, nil
+}
+func (a *failingAdapter) ListDomains(context.Context, *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+	return nil, a.listErr
+}
+
+func TestRunSyncCycle_RecalculatesIntervalBothWays(t *testing.T) {
+	db := setupTestDB(t)
+	cryptoSvc, err := crypto.NewCryptoService("01234567890123456789012345678901")
+	require.NoError(t, err)
+	encrypted, err := cryptoSvc.Encrypt(`{"token":"test-token"}`)
+	require.NoError(t, err)
+	config := domain.RegistrarConfig{RegistrarType: "cloudflare", DisplayName: "Cloudflare"}
+	require.NoError(t, db.Create(&config).Error)
+	account := domain.RegistrarAccount{
+		RegistrarConfigID: config.ID, AccountName: "adaptive",
+		CredentialsEncrypted: encrypted, Status: "connected", AutoSyncEnabled: false,
+	}
+	require.NoError(t, db.Create(&account).Error)
+
+	stub := &cycleAdapter{credentials: make(chan adapter.RegistrarCredential, 4)}
+	registry := adapter.NewAdapterRegistry()
+	registry.Register(stub)
+	scheduler := NewSyncScheduler(db, registry, cryptoSvc, zap.NewNop())
+
+	// Account's most imminent domain is 15 days out → 12h interval.
+	near := time.Now().Add(15 * 24 * time.Hour)
+	far := time.Now().Add(300 * 24 * time.Hour)
+	stub.domains = []domain.NormalizedDomain{
+		{DomainName: "near.test", ExpirationDate: &near, Status: "active"},
+		{DomainName: "far.test", ExpirationDate: &far, Status: "active"},
+	}
+	require.NoError(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	var afterSpeedUp domain.RegistrarAccount
+	require.NoError(t, db.First(&afterSpeedUp, account.ID).Error)
+	assert.Equal(t, 12, afterSpeedUp.SyncIntervalHours, "imminent domain must speed the account up")
+
+	// The imminent domain renews far out → interval must slow back down.
+	renewed := time.Now().Add(400 * 24 * time.Hour)
+	stub.domains = []domain.NormalizedDomain{
+		{DomainName: "near.test", ExpirationDate: &renewed, Status: "active"},
+		{DomainName: "far.test", ExpirationDate: &far, Status: "active"},
+	}
+	require.NoError(t, scheduler.RunSyncCycle(context.Background(), account.ID))
+	var afterSlowDown domain.RegistrarAccount
+	require.NoError(t, db.First(&afterSlowDown, account.ID).Error)
+	assert.Equal(t, 168, afterSlowDown.SyncIntervalHours, "renewal must slow the account back down")
+}
+
 func TestIsDue_UsesLatestManualSync(t *testing.T) {
 	now := time.Now()
 	scheduler := NewSyncScheduler(nil, nil, nil, zap.NewNop())

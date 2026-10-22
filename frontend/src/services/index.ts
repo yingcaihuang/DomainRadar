@@ -44,6 +44,8 @@ export const domainApi = {
   },
   get: (id: number) => request<{ data: Domain }>(`/domains/${id}`),
   whois: (id: number) => request<{ data: any }>(`/domains/${id}/whois`),
+  refreshDomain: (id: number) =>
+    request<{ data: Domain; source: string }>(`/domains/${id}/refresh`, { method: 'POST' }),
   create: (data: Partial<Domain> & { tag_ids?: number[] }) =>
     request<{ data: Domain }>('/domains', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: number, data: Partial<Domain> & { tag_ids?: number[] }) =>

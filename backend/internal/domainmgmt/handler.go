@@ -1,8 +1,10 @@
 package domainmgmt
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"domainradar/internal/adapter"
 	"domainradar/internal/audit"
 	"domainradar/internal/auth"
+	"domainradar/internal/crypto"
 	"domainradar/internal/domain"
 	"domainradar/internal/errors"
 
@@ -46,18 +50,46 @@ const (
 
 // DomainHandler implements domain CRUD, import, export, and bulk operations.
 type DomainHandler struct {
-	db           *gorm.DB
-	auditService *audit.Service
-	logger       *zap.Logger
+	db              *gorm.DB
+	auditService    *audit.Service
+	logger          *zap.Logger
+	adapterRegistry *adapter.AdapterRegistry
+	cryptoService   *crypto.CryptoService
+	whoisScheduler  *WhoisScheduler
+}
+
+// DomainHandlerOption is a functional option for DomainHandler.
+type DomainHandlerOption func(*DomainHandler)
+
+// WithAdapterRegistry sets the registrar adapter registry used by the
+// per-domain refresh endpoint for registrar-bound domains.
+func WithAdapterRegistry(r *adapter.AdapterRegistry) DomainHandlerOption {
+	return func(h *DomainHandler) { h.adapterRegistry = r }
+}
+
+// WithCryptoService sets the credential decryption service used by the
+// per-domain refresh endpoint.
+func WithCryptoService(c *crypto.CryptoService) DomainHandlerOption {
+	return func(h *DomainHandler) { h.cryptoService = c }
+}
+
+// WithWhoisScheduler sets the WHOIS scheduler used by the per-domain refresh
+// endpoint for manually added domains.
+func WithWhoisScheduler(ws *WhoisScheduler) DomainHandlerOption {
+	return func(h *DomainHandler) { h.whoisScheduler = ws }
 }
 
 // NewDomainHandler creates a new DomainHandler.
-func NewDomainHandler(db *gorm.DB, auditService *audit.Service, logger *zap.Logger) *DomainHandler {
-	return &DomainHandler{
+func NewDomainHandler(db *gorm.DB, auditService *audit.Service, logger *zap.Logger, opts ...DomainHandlerOption) *DomainHandler {
+	h := &DomainHandler{
 		db:           db,
 		auditService: auditService,
 		logger:       logger,
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // RegisterRoutes registers domain endpoints on the given Gin router group.
@@ -77,6 +109,7 @@ func (h *DomainHandler) RegisterRoutes(rg *gin.RouterGroup) {
 		domains.DELETE("/:id", auth.RequirePermission(auth.ManageDomains), h.DeleteDomain)
 		domains.POST("/import", auth.RequirePermission(auth.ManageDomains), h.ImportDomains)
 		domains.POST("/bulk", auth.RequirePermission(auth.ManageDomains), h.BulkOperation)
+		domains.POST("/:id/refresh", auth.RequirePermission(auth.ManageDomains), h.RefreshDomain)
 	}
 
 	// Tags.
@@ -422,7 +455,9 @@ func (h *DomainHandler) ListDomains(c *gin.Context) {
 		if score, ok := emailScoreMap[d.ID]; ok {
 			resp.EmailScore = &score
 		}
-		resp.WhoisChecked = d.WhoisLastCheckedAt != nil
+		// WHOIS badge only applies to manually added domains —
+		// registrar-bound domains are refreshed by the sync scheduler.
+		resp.WhoisChecked = d.RegistrarAccountID == nil && d.WhoisLastCheckedAt != nil
 		resp.WhoisLastCheckedAt = d.WhoisLastCheckedAt
 		resp.ServiceMonitorEnabled = svcMonitorMap[d.ID]
 		if pct, ok := svcUptimeMap[d.ID]; ok {
@@ -1516,6 +1551,151 @@ func EncodeExportRow(d domain.NormalizedDomain) []string {
 var _ = json.Marshal
 
 // GetWhoisInfo fetches WHOIS/RDAP information for a domain from the who-dat service.
+// RefreshDomain immediately refreshes a single domain's registrar-sourced
+// fields from its authoritative source: the bound registrar's API for
+// registrar-managed domains, WHOIS for manually added ones.
+// POST /api/v1/domains/:id/refresh
+func (h *DomainHandler) RefreshDomain(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		errors.ErrorResponse(c, errors.BadRequest("invalid domain ID"))
+		return
+	}
+
+	var d domain.NormalizedDomain
+	if err := h.db.First(&d, id).Error; err != nil {
+		errors.ErrorResponse(c, errors.NotFound("domain not found"))
+		return
+	}
+
+	if d.RegistrarAccountID != nil {
+		h.refreshFromRegistrar(c, &d)
+		return
+	}
+	h.refreshFromWhois(c, &d)
+}
+
+// refreshFromRegistrar pulls the domain's current data from its registrar
+// adapter and updates the API-sourced fields (same field set as sync merge).
+func (h *DomainHandler) refreshFromRegistrar(c *gin.Context, d *domain.NormalizedDomain) {
+	if h.adapterRegistry == nil || h.cryptoService == nil {
+		errors.ErrorResponse(c, errors.InternalServer("registrar refresh is not available"))
+		return
+	}
+
+	var account domain.RegistrarAccount
+	if err := h.db.Preload("RegistrarConfig").First(&account, *d.RegistrarAccountID).Error; err != nil {
+		errors.ErrorResponse(c, errors.NotFound("registrar account not found"))
+		return
+	}
+
+	registrarAdapter, err := h.adapterRegistry.Get(account.RegistrarConfig.RegistrarType)
+	if err != nil {
+		errors.ErrorResponse(c, errors.InternalServer("no adapter found for registrar type: "+account.RegistrarConfig.RegistrarType))
+		return
+	}
+
+	credJSON, err := h.cryptoService.Decrypt(account.CredentialsEncrypted)
+	if err != nil {
+		h.logger.Error("failed to decrypt credentials", zap.Uint("account_id", account.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to decrypt credentials"))
+		return
+	}
+	credential, err := adapter.ParseRegistrarCredential(credJSON)
+	if err != nil {
+		h.logger.Error("failed to parse credentials", zap.Uint("account_id", account.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to parse credentials"))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	detail, err := registrarAdapter.GetDomainDetail(ctx, credential, d.DomainName)
+	if err != nil {
+		h.logger.Error("registrar refresh failed",
+			zap.Uint("domain_id", d.ID),
+			zap.String("domain", d.DomainName),
+			zap.Error(err),
+		)
+		errors.ErrorResponse(c, errors.InternalServer("registrar refresh failed: "+err.Error()))
+		return
+	}
+
+	var nameserversValue interface{}
+	if detail.Nameservers != nil {
+		nsJSON, _ := detail.Nameservers.Value()
+		nameserversValue = nsJSON
+	}
+	now := time.Now()
+	updates := map[string]interface{}{
+		"expiration_date":    detail.ExpirationDate,
+		"creation_date":      detail.CreationDate,
+		"auto_renew":         detail.AutoRenew,
+		"renewal_deadline":   detail.RenewalDeadline,
+		"status":             detail.Status,
+		"nameservers":        nameserversValue,
+		"privacy_protection": detail.PrivacyProtection,
+		"lock_status":        detail.LockStatus,
+		"last_sync_at":       &now,
+		"absence_count":      0,
+	}
+	if err := h.db.Model(d).Updates(updates).Error; err != nil {
+		h.logger.Error("failed to persist registrar refresh", zap.Uint("domain_id", d.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to save refreshed data"))
+		return
+	}
+
+	h.auditService.RecordAction(h.getUserID(c), "UPDATE", "domain_refresh", strconv.Itoa(int(d.ID)), map[string]interface{}{
+		"domain_name":    d.DomainName,
+		"registrar_type": account.RegistrarConfig.RegistrarType,
+		"source":         "registrar",
+	})
+
+	var reloaded domain.NormalizedDomain
+	h.db.First(&reloaded, d.ID)
+	c.JSON(http.StatusOK, gin.H{"data": reloaded, "source": "registrar"})
+}
+
+// refreshFromWhois runs an immediate WHOIS check for a manually added domain.
+func (h *DomainHandler) refreshFromWhois(c *gin.Context, d *domain.NormalizedDomain) {
+	if h.whoisScheduler == nil {
+		errors.ErrorResponse(c, errors.InternalServer("WHOIS refresh is not available"))
+		return
+	}
+
+	whoisData, updated, err := h.whoisScheduler.CheckNow(c.Request.Context(), d.ID)
+	if err != nil {
+		if stderrors.Is(err, gorm.ErrRecordNotFound) {
+			errors.ErrorResponse(c, errors.NotFound("domain not found"))
+			return
+		}
+		h.logger.Error("WHOIS refresh failed", zap.Uint("domain_id", d.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("WHOIS refresh failed: "+err.Error()))
+		return
+	}
+
+	h.auditService.RecordAction(h.getUserID(c), "UPDATE", "domain_refresh", strconv.Itoa(int(d.ID)), map[string]interface{}{
+		"domain_name": d.DomainName,
+		"source":      "whois",
+	})
+
+	c.JSON(http.StatusOK, gin.H{"data": updated, "source": "whois", "whois": whoisData})
+}
+
+// getUserID extracts the authenticated user's ID from the Gin context.
+func (h *DomainHandler) getUserID(c *gin.Context) uint {
+	userVal, exists := c.Get("user")
+	if !exists {
+		return 0
+	}
+	user, ok := userVal.(*auth.UserInfo)
+	if !ok {
+		return 0
+	}
+	return user.ID
+}
+
 // GET /api/v1/domains/:id/whois
 func (h *DomainHandler) GetWhoisInfo(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)

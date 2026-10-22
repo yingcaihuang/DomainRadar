@@ -233,13 +233,18 @@ func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 	`).Scan(&emailItems)
 	emailGrades.Items = emailItems
 
-	// WHOIS status
+	// WHOIS status — only manually added domains; registrar-bound domains
+	// are refreshed by the sync scheduler, not WHOIS.
 	var whoisChecked int64
-	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).Where("whois_last_checked_at IS NOT NULL").Count(&whoisChecked)
+	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).
+		Where("registrar_account_id IS NULL AND whois_last_checked_at IS NOT NULL").Count(&whoisChecked)
 	var whoisUnchecked int64
-	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).Where("whois_last_checked_at IS NULL").Count(&whoisUnchecked)
+	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).
+		Where("registrar_account_id IS NULL AND whois_last_checked_at IS NULL").Count(&whoisUnchecked)
 	var lastWhoisCheck time.Time
-	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).Select("MAX(whois_last_checked_at)").Row().Scan(&lastWhoisCheck)
+	h.db.WithContext(ctx).Model(&domain.NormalizedDomain{}).
+		Where("registrar_account_id IS NULL").
+		Select("MAX(whois_last_checked_at)").Row().Scan(&lastWhoisCheck)
 
 	whoisStatus := WhoisStatusSummary{
 		Checked:   int(whoisChecked),

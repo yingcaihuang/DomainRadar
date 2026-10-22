@@ -78,10 +78,8 @@ func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 				continue
 			}
 			synced++
-			// Domain exists — detect expiration change before updating.
-			expirationChanged := DetectExpirationChange(existing.ExpirationDate, remote.ExpirationDate)
-
-			// Update only API-sourced fields, preserving user-defined fields (group_id, notes, tags).
+			// Domain exists — update API-sourced fields, preserving
+			// user-defined fields (group_id, notes, tags).
 			now := time.Now()
 
 			// Serialize nameservers to JSON string for the update map.
@@ -115,29 +113,6 @@ func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 				continue
 			}
 			updated++
-
-			// If expiration date changed, trigger sync frequency recalculation.
-			if expirationChanged && remote.ExpirationDate != nil {
-				newInterval := CalculateSyncInterval(*remote.ExpirationDate)
-				newIntervalHours := int(newInterval.Hours())
-
-				// Update the registrar account's sync interval if this domain
-				// warrants more frequent syncing.
-				var account domain.RegistrarAccount
-				if accErr := db.First(&account, accountID).Error; accErr == nil {
-					currentIntervalHours := account.SyncIntervalHours
-					if newIntervalHours < currentIntervalHours {
-						db.Model(&account).Update("sync_interval_hours", newIntervalHours)
-					}
-				}
-
-				if logger != nil {
-					logger.Info("Expiration date changed, sync frequency recalculated",
-						zap.String("domain_name", remote.DomainName),
-						zap.Duration("new_interval", newInterval),
-					)
-				}
-			}
 		}
 	}
 
@@ -230,20 +205,4 @@ func TrackAbsences(db *gorm.DB, accountID uint, presentDomainNames []string, log
 	}
 
 	return nil
-}
-
-// DetectExpirationChange returns true if the expiration date has changed between
-// the old and new values. This is used to trigger sync frequency recalculation
-// within 5 minutes of detecting the change.
-func DetectExpirationChange(oldExpiry, newExpiry *time.Time) bool {
-	// If both are nil, no change.
-	if oldExpiry == nil && newExpiry == nil {
-		return false
-	}
-	// If one is nil and the other is not, it's a change.
-	if oldExpiry == nil || newExpiry == nil {
-		return true
-	}
-	// Compare the time values (ignoring sub-second differences for robustness).
-	return !oldExpiry.Truncate(time.Second).Equal(newExpiry.Truncate(time.Second))
 }

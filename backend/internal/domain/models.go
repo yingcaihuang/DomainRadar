@@ -177,16 +177,17 @@ type EmailCheck struct {
 
 // Alert represents a generated alert for a domain.
 type Alert struct {
-	ID             uint       `gorm:"primaryKey" json:"id"`
-	DomainID       uint       `gorm:"index;not null" json:"domain_id"`
-	AlertType      string     `gorm:"size:50;not null" json:"alert_type"` // "expiration", "certificate", "downtime", "email", "dns"
-	Severity       string     `gorm:"size:20;not null" json:"severity"`   // "informational", "warning", "critical", "expired"
-	Message        string     `gorm:"type:text" json:"message"`
-	DaysRemaining  *int       `json:"days_remaining"`
-	Acknowledged   bool       `gorm:"default:false" json:"acknowledged"`
-	DeliveryStatus string     `gorm:"size:20;default:'pending'" json:"delivery_status"` // "pending", "delivered", "failed", "undelivered"
-	GeneratedAt    time.Time  `gorm:"index;not null" json:"generated_at"`
-	AcknowledgedAt *time.Time `json:"acknowledged_at"`
+	ID                 uint       `gorm:"primaryKey" json:"id"`
+	DomainID           uint       `gorm:"index;not null" json:"domain_id"`
+	RegistrarAccountID *uint      `gorm:"index" json:"registrar_account_id,omitempty"` // set for account-level alerts (e.g. sync_failure)
+	AlertType          string     `gorm:"size:50;not null" json:"alert_type"`          // "expiration", "certificate", "downtime", "email", "dns"
+	Severity           string     `gorm:"size:20;not null" json:"severity"`            // "informational", "warning", "critical", "expired"
+	Message            string     `gorm:"type:text" json:"message"`
+	DaysRemaining      *int       `json:"days_remaining"`
+	Acknowledged       bool       `gorm:"default:false" json:"acknowledged"`
+	DeliveryStatus     string     `gorm:"size:20;default:'pending'" json:"delivery_status"` // "pending", "delivered", "failed", "undelivered"
+	GeneratedAt        time.Time  `gorm:"index;not null" json:"generated_at"`
+	AcknowledgedAt     *time.Time `json:"acknowledged_at"`
 
 	// Relations
 	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`

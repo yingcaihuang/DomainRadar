@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tag, Input, Select, Upload, Modal, Badge, Card, message, App, Tooltip } from 'antd';
-import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, UploadOutlined, DownloadOutlined, DeleteOutlined, TagOutlined, GroupOutlined, SafetyCertificateOutlined, MailOutlined, GlobalOutlined, CloudOutlined, SearchOutlined, SyncOutlined } from '@ant-design/icons';
 import type { Domain, ImportResult } from '../types';
 import { domainApi, tagApi, groupApi, registrarApi, rulesApi } from '../services';
 
@@ -69,6 +69,22 @@ export function DomainListPage() {
     },
     onError: (e: Error) => message.error(e.message),
   });
+
+  // 手动刷新单域名:绑定注册商的走注册商接口,手动添加的走 WHOIS(后端分流)
+  const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  const refreshDomain = async (id: number) => {
+    if (refreshingId !== null) return; // 防重复点击
+    setRefreshingId(id);
+    try {
+      await domainApi.refreshDomain(id);
+      queryClient.invalidateQueries({ queryKey: ['domains'] });
+      message.success('已刷新');
+    } catch (e: any) {
+      message.error(e.message || '刷新失败');
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   const bulkMutation = useMutation({
     mutationFn: domainApi.bulk,
@@ -205,15 +221,22 @@ export function DomainListPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 80,
+      width: 110,
       render: (_: any, record: Domain) => (
-        <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
-          modal.confirm({
-            title: '确定删除此域名？',
-            content: record.domain_name,
-            onOk: () => deleteMutation.mutateAsync(record.id),
-          });
-        }} />
+        <Space size={4}>
+          <Tooltip title="从注册商/WHOIS 立即刷新到期时间与状态">
+            <Button size="small" icon={<SyncOutlined />} loading={refreshingId === record.id}
+              disabled={refreshingId !== null && refreshingId !== record.id}
+              onClick={() => refreshDomain(record.id)} />
+          </Tooltip>
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
+            modal.confirm({
+              title: '确定删除此域名？',
+              content: record.domain_name,
+              onOk: () => deleteMutation.mutateAsync(record.id),
+            });
+          }} />
+        </Space>
       ),
     },
   ];

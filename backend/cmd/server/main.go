@@ -95,7 +95,6 @@ func main() {
 	ssoConfigHandler := auth.NewSSOConfigHandler(db, logger, authHandler)
 	groupMappingHandler := auth.NewGroupMappingHandler(db, logger)
 	dashboardHandler := dashboard.NewDashboardHandler(db, logger)
-	domainHandler := domainmgmt.NewDomainHandler(db, auditService, logger)
 	alertHandler := alert.NewAlertHandler(db, logger)
 	monitorHandler := monitor.NewMonitorHandler(db, logger)
 
@@ -114,6 +113,15 @@ func main() {
 		logger.Warn("Automatic registrar sync disabled: credential encryption service is not configured")
 	}
 	registrarHandler := adapter.NewRegistrarHandler(db, cryptoService, adapterRegistry, auditService, logger, adapter.WithSyncTrigger(syncScheduler))
+
+	// WHOIS scheduler (daily) — refreshes manually added domains only.
+	whoisScheduler := domainmgmt.NewWhoisScheduler(db, logger)
+
+	domainHandler := domainmgmt.NewDomainHandler(db, auditService, logger,
+		domainmgmt.WithAdapterRegistry(adapterRegistry),
+		domainmgmt.WithCryptoService(cryptoService),
+		domainmgmt.WithWhoisScheduler(whoisScheduler),
+	)
 
 	// Notification handler with channel registry
 	channelRegistry := notification.NewChannelRegistry()
@@ -137,6 +145,11 @@ func main() {
 
 	// Create notification dispatcher for webhook alerts
 	alertDispatcher := notification.NewAlertDispatcher(db, cryptoService, channelRegistry, logger)
+
+	// Sync failure alerts go through the same dispatch chain
+	syncScheduler.OnAlertCreated = func(a *domain.Alert) {
+		alertDispatcher.DispatchAlert(a)
+	}
 
 	// Start alert scheduler (health score updates + expiration alerts)
 	alertScheduler := alert.NewAlertScheduler(db, logger)
@@ -167,7 +180,6 @@ func main() {
 	websiteMonitor.Start(context.Background())
 
 	// Start WHOIS scheduler (daily)
-	whoisScheduler := domainmgmt.NewWhoisScheduler(db, logger)
 	whoisScheduler.OnAlertCreated = func(a *domain.Alert) {
 		alertDispatcher.DispatchAlert(a)
 	}

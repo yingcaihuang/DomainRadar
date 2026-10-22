@@ -26,6 +26,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&domain.Group{},
 		&domain.Tag{},
 		&domain.SyncLog{},
+		&domain.Alert{},
 	)
 	require.NoError(t, err, "failed to auto-migrate models")
 
@@ -362,90 +363,6 @@ func TestTrackAbsences_OnlyTracksDomainsForGivenAccount(t *testing.T) {
 	var reloaded2 domain.NormalizedDomain
 	db.First(&reloaded2, d2.ID)
 	assert.Equal(t, 0, reloaded2.AbsenceCount)
-}
-
-func TestDetectExpirationChange_BothNil(t *testing.T) {
-	assert.False(t, DetectExpirationChange(nil, nil), "both nil should not be a change")
-}
-
-func TestDetectExpirationChange_OldNilNewNotNil(t *testing.T) {
-	now := time.Now()
-	assert.True(t, DetectExpirationChange(nil, &now), "nil->non-nil should be a change")
-}
-
-func TestDetectExpirationChange_OldNotNilNewNil(t *testing.T) {
-	now := time.Now()
-	assert.True(t, DetectExpirationChange(&now, nil), "non-nil->nil should be a change")
-}
-
-func TestDetectExpirationChange_SameTime(t *testing.T) {
-	now := time.Now().Truncate(time.Second)
-	assert.False(t, DetectExpirationChange(&now, &now), "same time should not be a change")
-}
-
-func TestDetectExpirationChange_DifferentTime(t *testing.T) {
-	old := time.Now()
-	new := old.Add(24 * time.Hour)
-	assert.True(t, DetectExpirationChange(&old, &new), "different times should be a change")
-}
-
-func TestDetectExpirationChange_SubSecondDifference(t *testing.T) {
-	// Sub-second differences should be ignored.
-	base := time.Now().Truncate(time.Second)
-	slightlyDifferent := base.Add(500 * time.Millisecond)
-	assert.False(t, DetectExpirationChange(&base, &slightlyDifferent), "sub-second difference should not be a change")
-}
-
-func TestMergeDomains_ExpirationChangeTriggersRecalculation(t *testing.T) {
-	db := setupTestDB(t)
-	logger := newTestLogger()
-
-	accountID := uint(1)
-
-	// Create registrar config and account for the sync interval update test.
-	config := domain.RegistrarConfig{
-		RegistrarType: "godaddy",
-		DisplayName:   "GoDaddy",
-	}
-	require.NoError(t, db.Create(&config).Error)
-
-	account := domain.RegistrarAccount{
-		ID:                accountID,
-		RegistrarConfigID: config.ID,
-		AccountName:       "test-account",
-		Status:            "connected",
-		SyncIntervalHours: 168, // weekly
-	}
-	require.NoError(t, db.Create(&account).Error)
-
-	// Create existing domain with far-off expiry (would be weekly sync).
-	oldExpiry := time.Now().Add(120 * 24 * time.Hour)
-	existing := domain.NormalizedDomain{
-		DomainName:         "renewal.com",
-		RegistrarAccountID: &accountID,
-		ExpirationDate:     &oldExpiry,
-		Status:             "active",
-		DataSourceType:     "api",
-	}
-	require.NoError(t, db.Create(&existing).Error)
-
-	// Merge with new expiry that is within 30 days (should trigger 12h interval).
-	newExpiry := time.Now().Add(15 * 24 * time.Hour)
-	remoteDomains := []domain.NormalizedDomain{
-		{
-			DomainName:     "renewal.com",
-			ExpirationDate: &newExpiry,
-			Status:         "active",
-		},
-	}
-
-	_, _, err := MergeDomains(db, accountID, remoteDomains, logger)
-	assert.NoError(t, err)
-
-	// Verify the account's sync interval was updated to 12h.
-	var reloadedAccount domain.RegistrarAccount
-	db.First(&reloadedAccount, accountID)
-	assert.Equal(t, 12, reloadedAccount.SyncIntervalHours, "sync interval should be recalculated to 12h")
 }
 
 func TestMergeDomains_EmptyRemoteList(t *testing.T) {

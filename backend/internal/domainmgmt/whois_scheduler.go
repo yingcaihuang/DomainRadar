@@ -18,7 +18,12 @@ import (
 // AlertDispatchFunc is a callback for webhook notification dispatch.
 type WhoisAlertDispatchFunc func(alert *domain.Alert)
 
-// WhoisScheduler periodically checks WHOIS data for all domains.
+// WhoisScheduler periodically checks WHOIS data for manually added domains
+// (those without a bound registrar account). Domains managed through a
+// registrar adapter are updated exclusively by the registrar sync — the
+// registry (WHOIS/RDAP) can report a renewed expiration for a domain the
+// registrar no longer considers owned (e.g. GoDaddy keeps the registration
+// alive during the redemption period).
 type WhoisScheduler struct {
 	db             *gorm.DB
 	logger         *zap.Logger
@@ -52,14 +57,22 @@ func (s *WhoisScheduler) Start(ctx context.Context) {
 	s.logger.Info("WHOIS scheduler started", zap.Duration("interval", s.interval))
 }
 
-// runChecks fetches WHOIS for domains that haven't been checked in 24 hours.
+// runChecks fetches WHOIS for manually added domains that haven't been
+// checked in 24 hours. Every due domain is checked each cycle (no batch
+// limit); the 500ms spacing between requests bounds the load on who-dat.
+// Ordering puts the most critical first — never-checked, then oldest-checked,
+// tiebroken by nearest expiration — so if a cycle is interrupted the
+// highest-risk domains have already been refreshed.
 func (s *WhoisScheduler) runChecks(ctx context.Context) {
 	cutoff := time.Now().Add(-s.interval)
 
 	var domains []domain.NormalizedDomain
 	if err := s.db.WithContext(ctx).
+		Where("registrar_account_id IS NULL"). // registrar-bound domains are owned by the sync scheduler
 		Where("whois_last_checked_at IS NULL OR whois_last_checked_at < ?", cutoff).
-		Limit(50). // Process in batches to avoid overwhelming who-dat
+		Order("(whois_last_checked_at IS NULL) DESC"). // never-checked first
+		Order("whois_last_checked_at ASC").            // then oldest-checked first
+		Order("expiration_date ASC NULLS LAST").       // tiebreak: expired / expiring soon first
 		Find(&domains).Error; err != nil {
 		s.logger.Error("WHOIS scheduler: failed to query domains", zap.Error(err))
 		return
@@ -76,7 +89,7 @@ func (s *WhoisScheduler) runChecks(ctx context.Context) {
 
 	updated := 0
 	for _, d := range domains {
-		if err := s.checkDomain(ctx, &d, whoDatURL); err != nil {
+		if _, err := s.checkDomain(ctx, &d, whoDatURL); err != nil {
 			s.logger.Debug("WHOIS check failed", zap.String("domain", d.DomainName), zap.Error(err))
 			continue
 		}
@@ -88,23 +101,53 @@ func (s *WhoisScheduler) runChecks(ctx context.Context) {
 	s.logger.Info("WHOIS check batch completed", zap.Int("checked", updated), zap.Int("total", len(domains)))
 }
 
+// CheckNow performs an immediate WHOIS check for a single domain, persists
+// the results and returns the raw who-dat response together with the
+// reloaded domain. It backs the manual refresh endpoint for manually added
+// domains.
+func (s *WhoisScheduler) CheckNow(ctx context.Context, domainID uint) (map[string]interface{}, *domain.NormalizedDomain, error) {
+	var d domain.NormalizedDomain
+	if err := s.db.WithContext(ctx).First(&d, domainID).Error; err != nil {
+		return nil, nil, fmt.Errorf("loading domain %d: %w", domainID, err)
+	}
+	if d.RegistrarAccountID != nil {
+		return nil, nil, fmt.Errorf("domain %s is managed by a registrar account", d.DomainName)
+	}
+
+	whoDatURL := os.Getenv("WHO_DAT_URL")
+	if whoDatURL == "" {
+		whoDatURL = "http://who-dat:8080"
+	}
+
+	whoisData, err := s.checkDomain(ctx, &d, whoDatURL)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var reloaded domain.NormalizedDomain
+	if err := s.db.WithContext(ctx).First(&reloaded, domainID).Error; err != nil {
+		return whoisData, nil, fmt.Errorf("reloading domain %d: %w", domainID, err)
+	}
+	return whoisData, &reloaded, nil
+}
+
 // checkDomain fetches WHOIS for a single domain and updates the DB.
-func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDomain, whoDatURL string) error {
+func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDomain, whoDatURL string) (map[string]interface{}, error) {
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(whoDatURL + "/" + d.DomainName)
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body[:min(len(body), 200)]))
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body[:min(len(body), 200)]))
 	}
 
 	var whoisData map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&whoisData); err != nil {
-		return fmt.Errorf("decode failed: %w", err)
+		return nil, fmt.Errorf("decode failed: %w", err)
 	}
 
 	now := time.Now()
@@ -123,6 +166,16 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 			if t, err := time.Parse(time.RFC3339, created); err == nil {
 				updates["creation_date"] = t
 			}
+		}
+	}
+
+	// Derive status from the WHOIS expiration date.
+	if expDate, ok := updates["expiration_date"]; ok {
+		t := expDate.(time.Time)
+		if t.After(now) && d.Status == "expired" {
+			updates["status"] = "active"
+		} else if t.Before(now) && d.Status == "active" {
+			updates["status"] = "expired"
 		}
 	}
 
@@ -156,7 +209,7 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 	}
 
 	if err := s.db.WithContext(ctx).Model(d).Updates(updates).Error; err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create alert for WHOIS changes
@@ -174,7 +227,7 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 		}
 	}
 
-	return nil
+	return whoisData, nil
 }
 
 func min(a, b int) int {
