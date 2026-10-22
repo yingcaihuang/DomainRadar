@@ -269,7 +269,7 @@ func (m *CertificateMonitor) generateCriticalCertAlert(ctx context.Context, d do
 	}
 
 	alert := domain.Alert{
-		DomainID:       d.ID,
+		DomainID:       &d.ID,
 		AlertType:      "certificate",
 		Severity:       "critical",
 		Message:        message,
@@ -348,7 +348,7 @@ func (m *CertificateMonitor) evaluateCertExpiration(ctx context.Context, d domai
 		daysRemaining := result.DaysRemaining
 
 		alert := domain.Alert{
-			DomainID:       d.ID,
+			DomainID:       &d.ID,
 			AlertType:      "certificate",
 			Severity:       severity,
 			Message:        fmt.Sprintf("SSL certificate for %s expires in %d days (issuer: %s)", d.DomainName, daysRemaining, result.Issuer),

@@ -20,13 +20,15 @@ import (
 
 // mockChannel implements notification.NotificationChannel for testing.
 type mockChannel struct {
-	channelType string
-	sendErr     error
-	sendCount   int
+	channelType      string
+	sendErr          error
+	sendCount        int
+	lastNotification *notification.Notification
 }
 
 func (m *mockChannel) Send(ctx context.Context, n *notification.Notification) error {
 	m.sendCount++
+	m.lastNotification = n
 	return m.sendErr
 }
 
@@ -68,7 +70,7 @@ func createTestDomain(t *testing.T, db *gorm.DB) domain.NormalizedDomain {
 
 func createTestAlert(t *testing.T, db *gorm.DB, domainID uint) domain.Alert {
 	alert := domain.Alert{
-		DomainID:       domainID,
+		DomainID:       &domainID,
 		AlertType:      "expiration",
 		Severity:       "critical",
 		Message:        "Domain test-delivery.com expires in 3 days",
@@ -108,6 +110,13 @@ func TestNewAlertDeliveryService(t *testing.T) {
 	svc := NewAlertDeliveryService(db, logger)
 	assert.NotNil(t, svc)
 	assert.NotNil(t, svc.notificationChannels)
+}
+
+func TestDeliverAlert_RejectsAccountScope(t *testing.T) {
+	db := setupDeliveryTestDB(t)
+	svc := NewAlertDeliveryService(db, zap.NewNop())
+	err := svc.DeliverAlert(context.Background(), &domain.Alert{AlertType: "sync_failure"})
+	require.ErrorContains(t, err, "account-level alerts must use the notification dispatcher")
 }
 
 func TestDeliverAlert_Success(t *testing.T) {
@@ -267,6 +276,38 @@ func TestDeliverAlert_UnregisteredChannelType(t *testing.T) {
 }
 
 // --- RetryFailedDeliveries Tests ---
+
+func TestRetryFailedDeliveries_AccountScope(t *testing.T) {
+	db := setupDeliveryTestDB(t)
+	createTestDomain(t, db)
+	config := domain.RegistrarConfig{RegistrarType: "cloudflare"}
+	require.NoError(t, db.Create(&config).Error)
+	account := domain.RegistrarAccount{RegistrarConfigID: config.ID, AccountName: "retry"}
+	require.NoError(t, db.Create(&account).Error)
+	accountAlert := domain.Alert{
+		RegistrarAccountID: &account.ID, AlertType: "sync_failure",
+		Severity: "warning", Message: "Account sync failed", GeneratedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&accountAlert).Error)
+	ch := createTestChannel(t, db, "webhook")
+	log := domain.NotificationLog{
+		AlertID: accountAlert.ID, ChannelID: ch.ID, Status: "failed",
+		CreatedAt: time.Now().Add(-10 * time.Minute),
+	}
+	require.NoError(t, db.Create(&log).Error)
+	svc := NewAlertDeliveryService(db, zap.NewNop())
+	mock := &mockChannel{channelType: "webhook"}
+	svc.RegisterChannel("webhook", mock)
+
+	require.NoError(t, svc.RetryFailedDeliveries(context.Background()))
+	require.Equal(t, 1, mock.sendCount)
+	require.NotNil(t, mock.lastNotification)
+	require.Empty(t, mock.lastNotification.DomainName)
+	require.Empty(t, mock.lastNotification.DomainURL)
+	require.Equal(t, accountAlert.Message, mock.lastNotification.Message)
+	require.NoError(t, db.First(&log, log.ID).Error)
+	require.Equal(t, "sent", log.Status)
+}
 
 func TestRetryFailedDeliveries_Success(t *testing.T) {
 	db := setupDeliveryTestDB(t)

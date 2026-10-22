@@ -79,7 +79,7 @@ func seedAlerts(t *testing.T, db *gorm.DB, domainID uint) []domain.Alert {
 
 	alerts := []domain.Alert{
 		{
-			DomainID:       domainID,
+			DomainID:       &domainID,
 			AlertType:      "expiration",
 			Severity:       SeverityCritical,
 			Message:        "Domain example.com expires in 7 days",
@@ -88,7 +88,7 @@ func seedAlerts(t *testing.T, db *gorm.DB, domainID uint) []domain.Alert {
 			GeneratedAt:    now,
 		},
 		{
-			DomainID:       domainID,
+			DomainID:       &domainID,
 			AlertType:      "expiration",
 			Severity:       SeverityWarning,
 			Message:        "Domain example.com expires in 30 days",
@@ -97,7 +97,7 @@ func seedAlerts(t *testing.T, db *gorm.DB, domainID uint) []domain.Alert {
 			GeneratedAt:    now.Add(-24 * time.Hour),
 		},
 		{
-			DomainID:       domainID,
+			DomainID:       &domainID,
 			AlertType:      "certificate",
 			Severity:       SeverityInformational,
 			Message:        "Certificate expires in 90 days",
@@ -118,6 +118,46 @@ func seedAlerts(t *testing.T, db *gorm.DB, domainID uint) []domain.Alert {
 
 func timePtr(t time.Time) *time.Time {
 	return &t
+}
+
+func TestHandleAccountAlert_ListGetAndAcknowledge(t *testing.T) {
+	db := setupHandlerTestDB(t)
+	seedDomain(t, db)
+	config := domain.RegistrarConfig{RegistrarType: "cloudflare"}
+	require.NoError(t, db.Create(&config).Error)
+	account := domain.RegistrarAccount{RegistrarConfigID: config.ID, AccountName: "account-alert"}
+	require.NoError(t, db.Create(&account).Error)
+	accountAlert := domain.Alert{
+		RegistrarAccountID: &account.ID, AlertType: "sync_failure",
+		Severity: "warning", Message: "Account sync failed", GeneratedAt: time.Now(),
+	}
+	require.NoError(t, db.Create(&accountAlert).Error)
+	router := setupAlertTestRouter(t, db, &auth.UserInfo{ID: 1, Roles: []string{auth.RoleAdmin}})
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/alerts", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var list alertListResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
+	require.Len(t, list.Alerts, 1)
+	require.Nil(t, list.Alerts[0].DomainID)
+	require.Empty(t, list.Alerts[0].DomainName)
+	require.Equal(t, &account.ID, list.Alerts[0].RegistrarAccountID)
+
+	path := "/api/v1/alerts/" + strconv.Itoa(int(accountAlert.ID))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	var detail alertResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &detail))
+	require.Equal(t, list.Alerts[0], detail)
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodPut, path+"/acknowledge", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NoError(t, db.First(&accountAlert, accountAlert.ID).Error)
+	require.True(t, accountAlert.Acknowledged)
+	require.Nil(t, accountAlert.DomainID)
 }
 
 // --- NewAlertHandler Tests ---
@@ -381,7 +421,8 @@ func TestHandleGetAlert_Success(t *testing.T) {
 	assert.Equal(t, "expiration", resp.AlertType)
 	assert.Equal(t, SeverityCritical, resp.Severity)
 	assert.Equal(t, "example.com", resp.DomainName)
-	assert.Equal(t, d.ID, resp.DomainID)
+	require.NotNil(t, resp.DomainID)
+	assert.Equal(t, d.ID, *resp.DomainID)
 }
 
 func TestHandleGetAlert_NotFound(t *testing.T) {

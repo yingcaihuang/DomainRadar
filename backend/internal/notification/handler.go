@@ -748,7 +748,7 @@ func (h *NotificationHandler) ListChannelLogs(c *gin.Context) {
 			resp.Message = log.Alert.Message
 			// Get domain name
 			var dom domain.NormalizedDomain
-			if h.db.Select("domain_name").First(&dom, log.Alert.DomainID).Error == nil {
+			if log.Alert.DomainID != nil && h.db.Select("domain_name").First(&dom, *log.Alert.DomainID).Error == nil {
 				resp.DomainName = dom.DomainName
 			}
 		}

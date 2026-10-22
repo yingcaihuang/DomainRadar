@@ -39,17 +39,18 @@ type alertListResponse struct {
 
 // alertResponse represents a single alert in API responses.
 type alertResponse struct {
-	ID             uint    `json:"id"`
-	DomainID       uint    `json:"domain_id"`
-	DomainName     string  `json:"domain_name,omitempty"`
-	AlertType      string  `json:"alert_type"`
-	Severity       string  `json:"severity"`
-	Message        string  `json:"message"`
-	DaysRemaining  *int    `json:"days_remaining"`
-	Acknowledged   bool    `json:"acknowledged"`
-	DeliveryStatus string  `json:"delivery_status"`
-	GeneratedAt    string  `json:"generated_at"`
-	AcknowledgedAt *string `json:"acknowledged_at"`
+	ID                 uint    `json:"id"`
+	DomainID           *uint   `json:"domain_id"`
+	RegistrarAccountID *uint   `json:"registrar_account_id,omitempty"`
+	DomainName         string  `json:"domain_name,omitempty"`
+	AlertType          string  `json:"alert_type"`
+	Severity           string  `json:"severity"`
+	Message            string  `json:"message"`
+	DaysRemaining      *int    `json:"days_remaining"`
+	Acknowledged       bool    `json:"acknowledged"`
+	DeliveryStatus     string  `json:"delivery_status"`
+	GeneratedAt        string  `json:"generated_at"`
+	AcknowledgedAt     *string `json:"acknowledged_at"`
 }
 
 // HandleListAlerts lists alerts with filtering and pagination.
@@ -268,15 +269,16 @@ func (h *AlertHandler) RegisterRoutes(group *gin.RouterGroup) {
 // toAlertResponse converts a domain.Alert to the API response format.
 func toAlertResponse(a domain.Alert) alertResponse {
 	resp := alertResponse{
-		ID:             a.ID,
-		DomainID:       a.DomainID,
-		AlertType:      a.AlertType,
-		Severity:       a.Severity,
-		Message:        a.Message,
-		DaysRemaining:  a.DaysRemaining,
-		Acknowledged:   a.Acknowledged,
-		DeliveryStatus: a.DeliveryStatus,
-		GeneratedAt:    a.GeneratedAt.Format(time.RFC3339),
+		ID:                 a.ID,
+		DomainID:           a.DomainID,
+		RegistrarAccountID: a.RegistrarAccountID,
+		AlertType:          a.AlertType,
+		Severity:           a.Severity,
+		Message:            a.Message,
+		DaysRemaining:      a.DaysRemaining,
+		Acknowledged:       a.Acknowledged,
+		DeliveryStatus:     a.DeliveryStatus,
+		GeneratedAt:        a.GeneratedAt.Format(time.RFC3339),
 	}
 
 	if a.AcknowledgedAt != nil {

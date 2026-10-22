@@ -313,7 +313,7 @@ func (m *EmailMonitor) createEmailComplianceAlert(ctx context.Context, d domain.
 	}
 
 	alert := domain.Alert{
-		DomainID:       d.ID,
+		DomainID:       &d.ID,
 		AlertType:      "email",
 		Severity:       "warning",
 		Message:        message,
@@ -331,7 +331,7 @@ func (m *EmailMonitor) createEmailComplianceAlert(ctx context.Context, d domain.
 // createMXChangeAlert creates a warning alert when MX records change.
 func (m *EmailMonitor) createMXChangeAlert(ctx context.Context, d domain.NormalizedDomain, now time.Time) {
 	alert := domain.Alert{
-		DomainID:       d.ID,
+		DomainID:       &d.ID,
 		AlertType:      "email",
 		Severity:       "warning",
 		Message:        fmt.Sprintf("MX records for %s have changed since the last check", d.DomainName),
@@ -369,7 +369,7 @@ func (m *EmailMonitor) checkMXReachability(ctx context.Context, d domain.Normali
 			}
 
 			alert := domain.Alert{
-				DomainID:       d.ID,
+				DomainID:       &d.ID,
 				AlertType:      "email",
 				Severity:       "critical",
 				Message:        fmt.Sprintf("MX host %s for domain %s is not responding on port 25", host, d.DomainName),

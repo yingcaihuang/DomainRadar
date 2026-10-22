@@ -132,6 +132,10 @@ func TestCheckAndScheduleAccounts_SkipsDisabledAndDisconnected(t *testing.T) {
 
 func TestSyncFailureAlert_CreatedAfterTwoConsecutiveFailures(t *testing.T) {
 	db := setupTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	require.NoError(t, db.Exec("PRAGMA foreign_keys = ON").Error)
 	cryptoSvc, err := crypto.NewCryptoService("01234567890123456789012345678901")
 	require.NoError(t, err)
 	encrypted, err := cryptoSvc.Encrypt(`{"token":"test-token"}`)
@@ -164,6 +168,7 @@ func TestSyncFailureAlert_CreatedAfterTwoConsecutiveFailures(t *testing.T) {
 	require.NoError(t, db.Where("alert_type = ?", "sync_failure").Find(&alerts).Error)
 	require.Len(t, alerts, 1)
 	assert.Equal(t, "warning", alerts[0].Severity)
+	assert.Nil(t, alerts[0].DomainID)
 	require.NotNil(t, alerts[0].RegistrarAccountID)
 	assert.Equal(t, account.ID, *alerts[0].RegistrarAccountID)
 	assert.False(t, alerts[0].Acknowledged)

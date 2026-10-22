@@ -215,7 +215,7 @@ func (s *WhoisScheduler) checkDomain(ctx context.Context, d *domain.NormalizedDo
 	// Create alert for WHOIS changes
 	if len(changes) > 0 && s.OnAlertCreated != nil {
 		alert := domain.Alert{
-			DomainID:       d.ID,
+			DomainID:       &d.ID,
 			AlertType:      "whois_change",
 			Severity:       "informational",
 			Message:        fmt.Sprintf("域名 %s WHOIS 信息变更: %s", d.DomainName, changes[0]),

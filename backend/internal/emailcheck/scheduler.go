@@ -241,7 +241,7 @@ func (s *EmailScheduler) maybeCreateAlert(ctx context.Context, monitor domain.Em
 
 		if err == gorm.ErrRecordNotFound {
 			alert := domain.Alert{
-				DomainID:     monitor.DomainID,
+				DomainID:     &monitor.DomainID,
 				AlertType:    alertType,
 				Severity:     rule.Severity,
 				Message:      message,

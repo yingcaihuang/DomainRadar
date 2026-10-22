@@ -94,7 +94,7 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 		if result.Error == gorm.ErrRecordNotFound {
 			// Create new alert
 			alert := domain.Alert{
-				DomainID:      d.ID,
+				DomainID:      &d.ID,
 				AlertType:     alertType,
 				Severity:      severity,
 				Message:       formatAlertMessage(d.DomainName, daysRemaining),

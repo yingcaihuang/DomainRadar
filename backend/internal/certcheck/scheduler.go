@@ -180,7 +180,7 @@ func (s *CertScheduler) maybeCreateAlert(ctx context.Context, monitor domain.Cer
 	if err == gorm.ErrRecordNotFound {
 		daysRemaining := result.DaysRemaining
 		alert := domain.Alert{
-			DomainID:      monitor.DomainID,
+			DomainID:      &monitor.DomainID,
 			AlertType:     alertType,
 			Severity:      severity,
 			Message:       message,

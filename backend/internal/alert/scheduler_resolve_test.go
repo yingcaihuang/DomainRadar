@@ -32,7 +32,7 @@ func TestRunExpirationCheck_AutoResolvesClearedAlerts(t *testing.T) {
 	d := domain.NormalizedDomain{DomainName: "renewed.com", ExpirationDate: &expired, Status: "expired"}
 	require.NoError(t, db.Create(&d).Error)
 	oldAlert := domain.Alert{
-		DomainID: d.ID, AlertType: "domain_expired", Severity: "critical",
+		DomainID: &d.ID, AlertType: "domain_expired", Severity: "critical",
 		Message: "域名 renewed.com 已过期 10 天", Acknowledged: false, GeneratedAt: time.Now(),
 	}
 	require.NoError(t, db.Create(&oldAlert).Error)
@@ -58,8 +58,8 @@ func TestRunExpirationCheck_TieredResolution(t *testing.T) {
 	expired := time.Now().Add(-5 * 24 * time.Hour)
 	d := domain.NormalizedDomain{DomainName: "short-renewal.com", ExpirationDate: &expired, Status: "expired"}
 	require.NoError(t, db.Create(&d).Error)
-	expiredAlert := domain.Alert{DomainID: d.ID, AlertType: "domain_expired", Severity: "critical", Acknowledged: false, GeneratedAt: time.Now()}
-	warnAlert := domain.Alert{DomainID: d.ID, AlertType: "domain_expiring_30d", Severity: "warning", Acknowledged: false, GeneratedAt: time.Now()}
+	expiredAlert := domain.Alert{DomainID: &d.ID, AlertType: "domain_expired", Severity: "critical", Acknowledged: false, GeneratedAt: time.Now()}
+	warnAlert := domain.Alert{DomainID: &d.ID, AlertType: "domain_expiring_30d", Severity: "warning", Acknowledged: false, GeneratedAt: time.Now()}
 	require.NoError(t, db.Create(&expiredAlert).Error)
 	require.NoError(t, db.Create(&warnAlert).Error)
 
@@ -87,7 +87,7 @@ func TestRunExpirationCheck_ResolvedAlertDoesNotSuppressNewOnes(t *testing.T) {
 	expired := time.Now().Add(-10 * 24 * time.Hour)
 	d := domain.NormalizedDomain{DomainName: "cycle.com", ExpirationDate: &expired, Status: "expired"}
 	require.NoError(t, db.Create(&d).Error)
-	stale := domain.Alert{DomainID: d.ID, AlertType: "domain_expired", Severity: "critical", Acknowledged: false, GeneratedAt: time.Now()}
+	stale := domain.Alert{DomainID: &d.ID, AlertType: "domain_expired", Severity: "critical", Acknowledged: false, GeneratedAt: time.Now()}
 	require.NoError(t, db.Create(&stale).Error)
 
 	s := NewAlertScheduler(db, zap.NewNop())

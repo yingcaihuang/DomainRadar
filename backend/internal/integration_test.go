@@ -385,7 +385,7 @@ func TestIntegration_AlertEngineAndAcknowledge(t *testing.T) {
 		// The domain might not hit an exact threshold day—this is expected behavior.
 		// Create an alert manually to test the acknowledge flow.
 		manualAlert := domain.Alert{
-			DomainID:       d.ID,
+			DomainID:       &d.ID,
 			AlertType:      "expiration",
 			Severity:       "critical",
 			Message:        "Test alert",

@@ -28,7 +28,13 @@ func NewAlertDispatcher(db *gorm.DB, cryptoService interface{ Decrypt(string) (s
 func (d *AlertDispatcher) DispatchAlert(alert *domain.Alert) {
 	// Get domain name
 	var domainObj domain.NormalizedDomain
-	d.db.Select("domain_name").First(&domainObj, alert.DomainID)
+	if alert.DomainID != nil {
+		if err := d.db.Select("domain_name").First(&domainObj, *alert.DomainID).Error; err != nil {
+			d.logger.Error("Failed to load domain for notification",
+				zap.Uint("alert_id", alert.ID), zap.Error(err))
+			return
+		}
+	}
 
 	// Get all active channels
 	var channels []domain.NotificationChannel

@@ -48,9 +48,14 @@ func (s *AlertDeliveryService) RegisterChannel(channelType string, channel notif
 // DeliverAlert sends notifications for an alert to all users assigned to the domain
 // via configured channels based on notification rules.
 func (s *AlertDeliveryService) DeliverAlert(ctx context.Context, alert *domain.Alert) error {
+	if alert.DomainID == nil {
+		err := fmt.Errorf("alert %d has no domain; account-level alerts must use the notification dispatcher", alert.ID)
+		s.logger.Error("cannot deliver alert using domain notification rules", zap.Error(err))
+		return err
+	}
 	s.logger.Info("delivering alert",
 		zap.Uint("alert_id", alert.ID),
-		zap.Uint("domain_id", alert.DomainID),
+		zap.Uint("domain_id", *alert.DomainID),
 		zap.String("severity", alert.Severity))
 
 	// Find notification rules matching this alert's domain and severity
@@ -76,9 +81,9 @@ func (s *AlertDeliveryService) DeliverAlert(ctx context.Context, alert *domain.A
 
 	// Load the domain for notification context
 	var dom domain.NormalizedDomain
-	if err := s.db.WithContext(ctx).First(&dom, alert.DomainID).Error; err != nil {
+	if err := s.db.WithContext(ctx).First(&dom, *alert.DomainID).Error; err != nil {
 		s.logger.Error("failed to load domain for alert delivery",
-			zap.Uint("domain_id", alert.DomainID),
+			zap.Uint("domain_id", *alert.DomainID),
 			zap.Error(err))
 		return fmt.Errorf("loading domain: %w", err)
 	}
@@ -181,11 +186,15 @@ func (s *AlertDeliveryService) RetryFailedDeliveries(ctx context.Context) error 
 
 		// Load the domain for the alert
 		var dom domain.NormalizedDomain
-		if err := s.db.WithContext(ctx).First(&dom, log.Alert.DomainID).Error; err != nil {
-			s.logger.Error("failed to load domain for retry",
-				zap.Uint("domain_id", log.Alert.DomainID),
-				zap.Error(err))
-			continue
+		var domainURL string
+		if log.Alert.DomainID != nil {
+			if err := s.db.WithContext(ctx).First(&dom, *log.Alert.DomainID).Error; err != nil {
+				s.logger.Error("failed to load domain for retry",
+					zap.Uint("domain_id", *log.Alert.DomainID),
+					zap.Error(err))
+				continue
+			}
+			domainURL = fmt.Sprintf("/domains/%d", dom.ID)
 		}
 
 		// Build notification and attempt delivery
@@ -194,7 +203,7 @@ func (s *AlertDeliveryService) RetryFailedDeliveries(ctx context.Context) error 
 			Severity:    log.Alert.Severity,
 			AlertType:   log.Alert.AlertType,
 			DomainName:  dom.DomainName,
-			DomainURL:   fmt.Sprintf("/domains/%d", dom.ID),
+			DomainURL:   domainURL,
 			Message:     log.Alert.Message,
 			TriggeredAt: log.Alert.GeneratedAt,
 		}

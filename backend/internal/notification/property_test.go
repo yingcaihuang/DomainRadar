@@ -148,7 +148,7 @@ func TestProperty21_NotificationSeverityToChannelRouting(t *testing.T) {
 
 		// Create alert with the random severity
 		alert := &domain.Alert{
-			DomainID:       dom.ID,
+			DomainID:       &dom.ID,
 			AlertType:      "expiration",
 			Severity:       alertSeverity,
 			Message:        "Property test alert",

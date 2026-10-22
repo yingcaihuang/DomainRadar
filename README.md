@@ -196,6 +196,10 @@ cd backend
 go run ./cmd/migrate -command up
 ```
 
+迁移 `000003_alert_account_scope` 为告警表增加注册商账户关联，并允许账户级告警的 `domain_id` 为空；域名级告警仍保留真实域名外键。删除注册商账户时，其账户级告警会级联删除。回滚该迁移前，需先备份并清理 `domain_id IS NULL` 的账户级告警，否则回滚会拒绝执行，不会自动删除这些记录。
+
+迁移回归测试可在 `backend` 目录执行 `DOMAINRADAR_MIGRATION_TEST_DATABASE_URL='<PostgreSQL 测试库连接 URL>' go test ./internal/domain -run '^TestAlertAccountScopeMigration$' -count=1`，测试会创建并清理独立 schema，不修改现有表。
+
 ## 故障排查
 
 ### API 请求返回 308 重定向

@@ -154,7 +154,7 @@ func (s *MonitorScheduler) evaluateAlert(m *domain.ServiceMonitor, currentCheck 
 			})
 			// Create recovery alert
 			recoveryAlert := domain.Alert{
-				DomainID:       m.DomainID,
+				DomainID:       &m.DomainID,
 				AlertType:      "service_recovered",
 				Severity:       "informational",
 				Message:        fmt.Sprintf("服务监控 [%s] %s 已恢复正常", m.Label, m.Target),
@@ -196,7 +196,7 @@ func (s *MonitorScheduler) evaluateAlert(m *domain.ServiceMonitor, currentCheck 
 			// No existing alert, create one
 			now := time.Now()
 			alert := domain.Alert{
-				DomainID:       m.DomainID,
+				DomainID:       &m.DomainID,
 				AlertType:      "service_down",
 				Severity:       "critical",
 				Message:        fmt.Sprintf("服务监控 [%s] %s 连续 %d 次探测失败: %s", m.Label, m.Target, consecutiveFailures, currentCheck.Error),

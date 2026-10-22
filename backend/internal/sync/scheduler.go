@@ -280,7 +280,6 @@ func (s *SyncScheduler) handleSyncOutcome(ctx context.Context, account *domain.R
 	}
 
 	alert := domain.Alert{
-		DomainID:           0, // account-level alert
 		RegistrarAccountID: &account.ID,
 		AlertType:          "sync_failure",
 		Severity:           "warning",

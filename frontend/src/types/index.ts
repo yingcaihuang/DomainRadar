@@ -43,7 +43,8 @@ export interface Group {
 // Alert types
 export interface Alert {
   id: number;
-  domain_id: number;
+  domain_id: number | null;
+  registrar_account_id?: number;
   domain_name?: string;
   alert_type: string;
   severity: string;

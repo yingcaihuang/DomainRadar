@@ -90,7 +90,7 @@ func createTestAlert(t *testing.T, db *gorm.DB, severity string) *domain.Alert {
 	require.NoError(t, db.Create(d).Error)
 
 	alert := &domain.Alert{
-		DomainID:       d.ID,
+		DomainID:       &d.ID,
 		AlertType:      "expiration",
 		Severity:       severity,
 		Message:        "Domain expires in 7 days",

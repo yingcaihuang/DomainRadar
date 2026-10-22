@@ -178,7 +178,7 @@ type EmailCheck struct {
 // Alert represents a generated alert for a domain.
 type Alert struct {
 	ID                 uint       `gorm:"primaryKey" json:"id"`
-	DomainID           uint       `gorm:"index;not null" json:"domain_id"`
+	DomainID           *uint      `gorm:"index" json:"domain_id"`
 	RegistrarAccountID *uint      `gorm:"index" json:"registrar_account_id,omitempty"` // set for account-level alerts (e.g. sync_failure)
 	AlertType          string     `gorm:"size:50;not null" json:"alert_type"`          // "expiration", "certificate", "downtime", "email", "dns"
 	Severity           string     `gorm:"size:20;not null" json:"severity"`            // "informational", "warning", "critical", "expired"
@@ -190,7 +190,8 @@ type Alert struct {
 	AcknowledgedAt     *time.Time `json:"acknowledged_at"`
 
 	// Relations
-	Domain NormalizedDomain `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+	Domain           NormalizedDomain  `gorm:"foreignKey:DomainID" json:"domain,omitempty"`
+	RegistrarAccount *RegistrarAccount `gorm:"foreignKey:RegistrarAccountID;constraint:OnDelete:CASCADE" json:"-"`
 }
 
 // NotificationChannel stores configuration for a notification delivery channel.

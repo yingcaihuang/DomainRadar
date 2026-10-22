@@ -130,7 +130,7 @@ func (e *AlertEngine) RunExpirationCheck(ctx context.Context) error {
 
 		// Create alert record
 		alert := domain.Alert{
-			DomainID:       d.ID,
+			DomainID:       &d.ID,
 			AlertType:      "expiration",
 			Severity:       severity,
 			Message:        e.buildAlertMessage(d, daysRemaining, severity),

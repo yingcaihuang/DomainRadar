@@ -354,7 +354,7 @@ func (m *WebsiteMonitor) evaluateDowntime(ctx context.Context, d domain.Normaliz
 
 		// Generate downtime alert.
 		alert := domain.Alert{
-			DomainID:       d.ID,
+			DomainID:       &d.ID,
 			AlertType:      "downtime",
 			Severity:       "critical",
 			Message:        m.buildDowntimeMessage(d, currentResult),
@@ -398,7 +398,7 @@ func (m *WebsiteMonitor) handleRecovery(ctx context.Context, d domain.Normalized
 
 	// Create a recovery alert.
 	recoveryAlert := domain.Alert{
-		DomainID:       d.ID,
+		DomainID:       &d.ID,
 		AlertType:      "downtime",
 		Severity:       "informational",
 		Message:        fmt.Sprintf("Domain %s recovered. Total downtime: %s.", d.DomainName, formatDuration(downtimeDuration)),
