@@ -55,6 +55,13 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 		// Update health score
 		s.db.WithContext(ctx).Model(&d).Update("health_score", healthScore)
 
+		// Auto-resolve stale alerts whose condition has cleared (e.g. after a
+		// renewal). Without this, unacknowledged alerts would linger forever
+		// and the dedup check below would suppress future alerts of the same
+		// type — e.g. a renewed domain's old "expired" alert would block next
+		// year's expiration alert.
+		s.resolveClearedAlerts(ctx, d.ID, daysRemaining)
+
 		// Skip alert if domain has a mute tag (e.g. "不续费")
 		if hasMuteTag(d.Tags) {
 			continue
@@ -105,6 +112,41 @@ func (s *AlertScheduler) RunExpirationCheck(ctx context.Context) error {
 
 	s.logger.Info("Expiration check completed", zap.Int("domains_checked", len(domains)))
 	return nil
+}
+
+// clearedAlertTypes returns the expiration alert types whose condition no
+// longer holds for the given days remaining: "expired" clears once the
+// domain is no longer expired, the 7d/30d warnings clear once the domain is
+// more than 7/30 days from expiry.
+func clearedAlertTypes(daysRemaining int) []string {
+	var types []string
+	if daysRemaining >= 0 {
+		types = append(types, "domain_expired")
+	}
+	if daysRemaining > 7 {
+		types = append(types, "domain_expiring_7d")
+	}
+	if daysRemaining > 30 {
+		types = append(types, "domain_expiring_30d")
+	}
+	return types
+}
+
+// resolveClearedAlerts acknowledges unacknowledged expiration alerts of the
+// given domain whose condition has cleared (auto-close on renewal).
+func (s *AlertScheduler) resolveClearedAlerts(ctx context.Context, domainID uint, daysRemaining int) {
+	types := clearedAlertTypes(daysRemaining)
+	if len(types) == 0 {
+		return
+	}
+	if err := s.db.WithContext(ctx).Model(&domain.Alert{}).
+		Where("domain_id = ? AND alert_type IN ? AND acknowledged = ?", domainID, types, false).
+		Updates(map[string]interface{}{"acknowledged": true, "acknowledged_at": time.Now()}).Error; err != nil {
+		s.logger.Error("failed to auto-resolve cleared alerts",
+			zap.Uint("domain_id", domainID),
+			zap.Error(err),
+		)
+	}
 }
 
 // calculateHealthScore returns a score 0-100 based on days until expiration.
