@@ -739,7 +739,7 @@ func (h *RegistrarHandler) PreviewSync(c *gin.Context) {
 		pd := PreviewDomain{
 			DomainName: d.DomainName,
 			Status:     d.Status,
-			AutoRenew:  d.AutoRenew,
+			AutoRenew:  d.AutoRenew != nil && *d.AutoRenew,
 		}
 		if d.ExpirationDate != nil {
 			s := d.ExpirationDate.Format("2006-01-02")
@@ -822,14 +822,14 @@ func (h *RegistrarHandler) SelectiveImport(c *gin.Context) {
 		selectedSet[name] = true
 	}
 
-	var selected []domain.NormalizedDomain
+	var selected []DomainDetail
 	for _, d := range allDomains {
 		if selectedSet[d.DomainName] {
 			selected = append(selected, d)
 		}
 	}
 
-	// Import using MergeDomains from the sync package (inline merge logic)
+	// Apply the same partial registrar fields used by account sync and refresh.
 	accountID := account.ID
 	now := time.Now()
 	imported := 0
@@ -837,7 +837,7 @@ func (h *RegistrarHandler) SelectiveImport(c *gin.Context) {
 		var existing domain.NormalizedDomain
 		result := h.db.Where("domain_name = ?", remote.DomainName).First(&existing)
 		if result.Error == gorm.ErrRecordNotFound {
-			newDomain := remote
+			newDomain := remote.ToNormalizedDomain()
 			newDomain.DataSourceType = "api"
 			newDomain.RegistrarAccountID = &accountID
 			newDomain.LastSyncAt = &now
@@ -855,17 +855,23 @@ func (h *RegistrarHandler) SelectiveImport(c *gin.Context) {
 			imported++
 		} else if result.Error == nil {
 			// Already exists, update
-			updates := map[string]interface{}{
-				"expiration_date":      remote.ExpirationDate,
-				"auto_renew":           remote.AutoRenew,
-				"status":               remote.Status,
-				"registrar_account_id": accountID,
-				"last_sync_at":         now,
+			updates, updateErr := remote.UpdateFields()
+			if updateErr != nil {
+				h.logger.Error("invalid registrar domain during import", zap.String("domain", remote.DomainName), zap.Error(updateErr))
+				errors.ErrorResponse(c, errors.InternalServer("invalid registrar domain"))
+				return
 			}
+			updates["registrar_account_id"] = accountID
+			updates["last_sync_at"] = now
+			updates["absence_count"] = 0
 			if req.GroupID != nil {
 				updates["group_id"] = *req.GroupID
 			}
-			h.db.Model(&existing).Updates(updates)
+			if updateErr := h.db.Model(&existing).Updates(updates).Error; updateErr != nil {
+				h.logger.Error("failed to update imported domain", zap.String("domain", remote.DomainName), zap.Error(updateErr))
+				errors.ErrorResponse(c, errors.InternalServer("failed to update imported domain"))
+				return
+			}
 			// Assign tags if specified
 			if len(req.TagIDs) > 0 {
 				var tags []domain.Tag
@@ -873,6 +879,10 @@ func (h *RegistrarHandler) SelectiveImport(c *gin.Context) {
 				h.db.Model(&existing).Association("Tags").Replace(tags)
 			}
 			imported++
+		} else {
+			h.logger.Error("failed to query domain for import", zap.String("domain", remote.DomainName), zap.Error(result.Error))
+			errors.ErrorResponse(c, errors.InternalServer("failed to query domain for import"))
+			return
 		}
 	}
 

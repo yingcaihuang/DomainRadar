@@ -83,7 +83,7 @@ func (a *Adapter) TestConnection(ctx context.Context, credential *adapter.Regist
 
 // ListDomains retrieves all domains registered under the Cloudflare account.
 // Uses the Registrar Domains API: GET /accounts/{account_id}/registrar/domains
-func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	accountID, err := a.getAccountID(credential)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 		return nil, fmt.Errorf("cloudflare: list domains unsuccessful: %s", formatErrors(result.Errors))
 	}
 
-	domains := make([]domain.NormalizedDomain, 0, len(result.Result))
+	domains := make([]adapter.DomainDetail, 0, len(result.Result))
 	now := time.Now()
 	for _, d := range result.Result {
 		domains = append(domains, mapToDomain(d, now))
@@ -127,7 +127,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 
 // GetDomainDetail retrieves detailed information for a specific domain.
 // Uses: GET /accounts/{account_id}/registrar/domains/{domain_name}
-func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	accountID, err := a.getAccountID(credential)
 	if err != nil {
 		return nil, err
@@ -161,8 +161,8 @@ func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.Regis
 	}
 
 	now := time.Now()
-	normalized := mapToDomain(result.Result, now)
-	return &normalized, nil
+	detail := mapToDomain(result.Result, now)
+	return &detail, nil
 }
 
 // setAuthHeader adds the Bearer token authorization header to the request.
@@ -183,21 +183,15 @@ func (a *Adapter) getAccountID(credential *adapter.RegistrarCredential) (string,
 	return accountID, nil
 }
 
-// mapToDomain converts a Cloudflare registrar domain to a NormalizedDomain.
-func mapToDomain(d registrarDomain, now time.Time) domain.NormalizedDomain {
-	nd := domain.NormalizedDomain{
+// mapToDomain preserves optional fields from the Cloudflare Registrar API.
+func mapToDomain(d registrarDomain, now time.Time) adapter.DomainDetail {
+	nd := adapter.DomainDetail{
 		DomainName:          d.DomainName,
 		RegistrarIdentifier: "cloudflare",
 		AutoRenew:           d.AutoRenew,
 		LockStatus:          d.Locked,
 		DataSourceType:      "api",
 		LastSyncAt:          &now,
-		Status:              "active",
-	}
-
-	// Override status if expired
-	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(now) {
-		nd.Status = "expired"
 	}
 
 	if d.CreatedAt != "" {
@@ -212,9 +206,15 @@ func mapToDomain(d registrarDomain, now time.Time) domain.NormalizedDomain {
 		}
 	}
 
-	if len(d.NameServers) > 0 {
-		nd.Nameservers = domain.JSON(d.NameServers)
+	// Override status if expired, consistent with the other adapters.
+	if nd.ExpirationDate != nil {
+		if nd.ExpirationDate.Before(now) {
+			nd.Status = "expired"
+		} else {
+			nd.Status = "active"
+		}
 	}
+	nd.Nameservers = domain.JSON(d.NameServers)
 
 	// Map Cloudflare-specific statuses
 	if d.Available {
@@ -254,8 +254,8 @@ type registrarDomain struct {
 	CurrentRegistrar string   `json:"current_registrar"`
 	CreatedAt        string   `json:"created_at"`
 	ExpiresAt        string   `json:"expires_at"`
-	AutoRenew        bool     `json:"auto_renew"`
-	Locked           bool     `json:"locked"`
+	AutoRenew        *bool    `json:"auto_renew"`
+	Locked           *bool    `json:"locked"`
 	NameServers      []string `json:"name_servers"`
 	Available        bool     `json:"available"`
 }

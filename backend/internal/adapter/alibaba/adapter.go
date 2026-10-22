@@ -47,13 +47,13 @@ func (a *Adapter) TestConnection(ctx context.Context, credential *adapter.Regist
 }
 
 // ListDomains retrieves all domains from the Alibaba Cloud account.
-func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	client, err := a.newClient(credential)
 	if err != nil {
 		return nil, fmt.Errorf("alibaba: failed to create client: %w", err)
 	}
 
-	var allDomains []domain.NormalizedDomain
+	var allDomains []adapter.DomainDetail
 	pageNum := int32(1)
 	pageSize := int32(100)
 
@@ -88,7 +88,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 }
 
 // GetDomainDetail retrieves detailed info for a specific domain.
-func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	client, err := a.newClient(credential)
 	if err != nil {
 		return nil, fmt.Errorf("alibaba: failed to create client: %w", err)
@@ -108,7 +108,7 @@ func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.Regis
 	}
 
 	nd := mapDomainDetail(response.Body)
-	return &nd, nil
+	return adapter.NewDomainDetail(nd), nil
 }
 
 // newClient creates an Alibaba Cloud Domain API client from credentials.
@@ -134,10 +134,10 @@ func (a *Adapter) newClient(credential *adapter.RegistrarCredential) (*domainSvc
 	return client, nil
 }
 
-// mapDomainItem converts an Alibaba SDK domain list item to NormalizedDomain.
-func mapDomainItem(d *domainSvc.QueryDomainListResponseBodyDataDomain) domain.NormalizedDomain {
+// mapDomainItem preserves optional fields from an Alibaba SDK list item.
+func mapDomainItem(d *domainSvc.QueryDomainListResponseBodyDataDomain) adapter.DomainDetail {
 	now := time.Now()
-	nd := domain.NormalizedDomain{
+	nd := adapter.DomainDetail{
 		RegistrarIdentifier: "alibaba",
 		DataSourceType:      "api",
 		LastSyncAt:          &now,
@@ -160,9 +160,12 @@ func mapDomainItem(d *domainSvc.QueryDomainListResponseBodyDataDomain) domain.No
 
 	// Default to active - QueryDomainList returns owned domains
 	// Only mark as expired if ExpirationDate is in the past
-	nd.Status = "active"
-	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(time.Now()) {
-		nd.Status = "expired"
+	if nd.ExpirationDate != nil {
+		if nd.ExpirationDate.Before(time.Now()) {
+			nd.Status = "expired"
+		} else {
+			nd.Status = "active"
+		}
 	}
 
 	return nd

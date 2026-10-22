@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -24,17 +25,17 @@ import (
 
 type refreshAdapter struct {
 	registrarType string
-	domains       []domain.NormalizedDomain
+	domains       []adapter.DomainDetail
 }
 
 func (m *refreshAdapter) RegistrarType() string { return m.registrarType }
 func (m *refreshAdapter) TestConnection(context.Context, *adapter.RegistrarCredential) error {
 	return nil
 }
-func (m *refreshAdapter) ListDomains(context.Context, *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
-	return m.domains, nil
+func (m *refreshAdapter) ListDomains(context.Context, *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
+	return nil, nil
 }
-func (m *refreshAdapter) GetDomainDetail(_ context.Context, _ *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (m *refreshAdapter) GetDomainDetail(_ context.Context, _ *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	for i := range m.domains {
 		if m.domains[i].DomainName == domainName {
 			return &m.domains[i], nil
@@ -83,11 +84,12 @@ func newRefreshSetup(t *testing.T, registry *adapter.AdapterRegistry) *refreshSe
 func TestRefreshDomain_FromRegistrar(t *testing.T) {
 	// Adapter reports the current registrar truth: the domain was renewed.
 	renewed := time.Now().Add(340 * 24 * time.Hour)
+	autoRenew := true
 	registry := adapter.NewAdapterRegistry()
 	registry.Register(&refreshAdapter{
 		registrarType: "godaddy",
-		domains: []domain.NormalizedDomain{
-			{DomainName: "ouzuvideo.com", ExpirationDate: &renewed, Status: "active", AutoRenew: true},
+		domains: []adapter.DomainDetail{
+			{DomainName: "ouzuvideo.com", ExpirationDate: &renewed, Status: "active", AutoRenew: &autoRenew},
 		},
 	})
 	ts := newRefreshSetup(t, registry)
@@ -164,4 +166,58 @@ func TestRefreshDomain_DomainNotFound(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/domains/999/refresh", nil)
 	ts.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestRefreshDomain_PartialRegistrarDetail(t *testing.T) {
+	for _, explicitFalse := range []bool{false, true} {
+		t.Run(strconv.FormatBool(explicitFalse), func(t *testing.T) {
+			renewed := time.Now().Add(340 * 24 * time.Hour).UTC().Truncate(time.Second)
+			detail := adapter.DomainDetail{DomainName: "partial.test", ExpirationDate: &renewed}
+			if explicitFalse {
+				value := false
+				detail.AutoRenew = &value
+				detail.PrivacyProtection = &value
+				detail.LockStatus = &value
+				detail.Nameservers = domain.JSON{}
+			}
+			registry := adapter.NewAdapterRegistry()
+			registry.Register(&refreshAdapter{registrarType: "test", domains: []adapter.DomainDetail{detail}})
+			ts := newRefreshSetup(t, registry)
+			svc, err := crypto.NewCryptoService("01234567890123456789012345678901")
+			require.NoError(t, err)
+			credentials, err := svc.Encrypt(`{"token":"test"}`)
+			require.NoError(t, err)
+			config := domain.RegistrarConfig{RegistrarType: "test"}
+			require.NoError(t, ts.db.Create(&config).Error)
+			account := domain.RegistrarAccount{RegistrarConfigID: config.ID, CredentialsEncrypted: credentials}
+			require.NoError(t, ts.db.Create(&account).Error)
+			created := time.Now().Add(-365 * 24 * time.Hour).UTC().Truncate(time.Second)
+			deadline := time.Now().Add(7 * 24 * time.Hour).UTC().Truncate(time.Second)
+			original := domain.NormalizedDomain{
+				DomainName: detail.DomainName, RegistrarAccountID: &account.ID,
+				CreationDate: &created, RenewalDeadline: &deadline,
+				AutoRenew: true, PrivacyProtection: true, LockStatus: true,
+				Status: "active", Nameservers: domain.JSON{"ns1.partial.test"}, Notes: "preserve",
+			}
+			require.NoError(t, ts.db.Create(&original).Error)
+			w := httptest.NewRecorder()
+			ts.router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/domains/"+strconv.Itoa(int(original.ID))+"/refresh", nil))
+			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+			var got domain.NormalizedDomain
+			require.NoError(t, ts.db.First(&got, original.ID).Error)
+			require.Equal(t, renewed, *got.ExpirationDate)
+			require.Equal(t, created, *got.CreationDate)
+			require.Equal(t, deadline, *got.RenewalDeadline)
+			require.Equal(t, "active", got.Status)
+			require.Equal(t, "preserve", got.Notes)
+			require.Equal(t, !explicitFalse, got.AutoRenew)
+			require.Equal(t, !explicitFalse, got.PrivacyProtection)
+			require.Equal(t, !explicitFalse, got.LockStatus)
+			if explicitFalse {
+				require.Empty(t, got.Nameservers)
+			} else {
+				require.Equal(t, original.Nameservers, got.Nameservers)
+			}
+		})
+	}
 }

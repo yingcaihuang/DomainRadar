@@ -126,7 +126,7 @@ func TestListDomains_Success(t *testing.T) {
 					"name": "example.com",
 					"current_registrar": "Cloudflare",
 					"created_at": "2020-03-15T10:00:00Z",
-					"expires_at": "2025-03-15T10:00:00Z",
+					"expires_at": "2035-03-15T10:00:00Z",
 					"auto_renew": true,
 					"locked": true,
 					"name_servers": ["ns1.cloudflare.com", "ns2.cloudflare.com"],
@@ -156,22 +156,23 @@ func TestListDomains_Success(t *testing.T) {
 	d1 := domains[0]
 	assert.Equal(t, "example.com", d1.DomainName)
 	assert.Equal(t, "cloudflare", d1.RegistrarIdentifier)
-	assert.True(t, d1.AutoRenew)
-	assert.True(t, d1.LockStatus)
+	assert.Equal(t, boolPtr(true), d1.AutoRenew)
+	assert.Equal(t, boolPtr(true), d1.LockStatus)
 	assert.Equal(t, "api", d1.DataSourceType)
 	assert.Equal(t, "active", d1.Status)
 	assert.NotNil(t, d1.CreationDate)
 	assert.Equal(t, 2020, d1.CreationDate.Year())
 	assert.NotNil(t, d1.ExpirationDate)
-	assert.Equal(t, 2025, d1.ExpirationDate.Year())
+	assert.Equal(t, 2035, d1.ExpirationDate.Year())
 	assert.Equal(t, []string{"ns1.cloudflare.com", "ns2.cloudflare.com"}, []string(d1.Nameservers))
 	assert.NotNil(t, d1.LastSyncAt)
 
-	// Verify second domain mapping
+	// Verify second domain mapping (expires_at in the past → expired)
 	d2 := domains[1]
 	assert.Equal(t, "test.org", d2.DomainName)
-	assert.False(t, d2.AutoRenew)
-	assert.False(t, d2.LockStatus)
+	assert.Equal(t, boolPtr(false), d2.AutoRenew)
+	assert.Equal(t, boolPtr(false), d2.LockStatus)
+	assert.Equal(t, "expired", d2.Status)
 }
 
 func TestListDomains_EmptyResult(t *testing.T) {
@@ -281,8 +282,10 @@ func TestGetDomainDetail_Success(t *testing.T) {
 
 	assert.Equal(t, "example.com", d.DomainName)
 	assert.Equal(t, "cloudflare", d.RegistrarIdentifier)
-	assert.True(t, d.AutoRenew)
-	assert.True(t, d.LockStatus)
+	require.NotNil(t, d.AutoRenew)
+	require.NotNil(t, d.LockStatus)
+	assert.True(t, *d.AutoRenew)
+	assert.True(t, *d.LockStatus)
 	assert.Equal(t, "api", d.DataSourceType)
 	assert.NotNil(t, d.ExpirationDate)
 	assert.Equal(t, 2025, d.ExpirationDate.Year())
@@ -346,7 +349,8 @@ func TestListDomains_PartialDates(t *testing.T) {
 	assert.Equal(t, "nodates.com", d.DomainName)
 	assert.Nil(t, d.CreationDate)
 	assert.Nil(t, d.ExpirationDate)
-	assert.Nil(t, d.Nameservers)
+	assert.NotNil(t, d.Nameservers)
+	assert.Empty(t, d.Nameservers)
 }
 
 func TestListDomains_AvailableDomain(t *testing.T) {

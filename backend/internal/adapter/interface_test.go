@@ -7,22 +7,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"domainradar/internal/domain"
 )
 
 // mockAdapter is a test implementation of RegistrarAdapter.
 type mockAdapter struct {
 	registrarType string
-	domains       []domain.NormalizedDomain
+	domains       []DomainDetail
 	testConnErr   error
 }
 
-func (m *mockAdapter) ListDomains(_ context.Context, _ *RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (m *mockAdapter) ListDomains(_ context.Context, _ *RegistrarCredential) ([]DomainDetail, error) {
 	return m.domains, nil
 }
 
-func (m *mockAdapter) GetDomainDetail(_ context.Context, _ *RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (m *mockAdapter) GetDomainDetail(_ context.Context, _ *RegistrarCredential, domainName string) (*DomainDetail, error) {
 	for i := range m.domains {
 		if m.domains[i].DomainName == domainName {
 			return &m.domains[i], nil

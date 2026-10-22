@@ -82,8 +82,8 @@ func (a *Adapter) TestConnection(ctx context.Context, credential *adapter.Regist
 }
 
 // ListDomains retrieves all active domains from the Namecheap account.
-func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
-	var allDomains []domain.NormalizedDomain
+func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
+	var allDomains []adapter.DomainDetail
 	page := 1
 	pageSize := 100
 
@@ -108,7 +108,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 		}
 
 		for _, d := range result.Domains {
-			normalized := mapDomainToNormalized(d)
+			normalized := mapDomainListItem(d)
 			allDomains = append(allDomains, normalized)
 		}
 
@@ -122,7 +122,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 }
 
 // GetDomainDetail retrieves detailed info for a specific domain.
-func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	params := a.buildBaseParams(credential)
 	params.Set("Command", "namecheap.domains.getInfo")
 	params.Set("DomainName", domainName)
@@ -142,7 +142,9 @@ func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.Regis
 	}
 
 	normalized := mapDomainInfoToNormalized(result)
-	return &normalized, nil
+	detail := adapter.NewDomainDetail(normalized)
+	detail.PrivacyProtection = result.WhoisGuard.Enabled
+	return detail, nil
 }
 
 // buildBaseParams constructs the common query parameters for Namecheap API requests.
@@ -183,21 +185,18 @@ func (a *Adapter) doRequest(ctx context.Context, params url.Values) (*apiRespons
 	return &resp, nil
 }
 
-// mapDomainToNormalized converts a Namecheap domain list item to a NormalizedDomain.
-func mapDomainToNormalized(d namecheapDomain) domain.NormalizedDomain {
-	nd := domain.NormalizedDomain{
+// mapDomainListItem preserves optional Namecheap list attributes.
+func mapDomainListItem(d namecheapDomain) adapter.DomainDetail {
+	nd := adapter.DomainDetail{
 		DomainName:          d.Name,
 		RegistrarIdentifier: "namecheap",
 		AutoRenew:           d.AutoRenew,
 		LockStatus:          d.IsLocked,
-		PrivacyProtection:   d.WhoisGuard == "ENABLED",
 		DataSourceType:      "api",
-		Status:              "active",
 	}
-
-	// Override status if expired
-	if nd.ExpirationDate != nil && nd.ExpirationDate.Before(time.Now()) {
-		nd.Status = "expired"
+	if d.WhoisGuard != "" {
+		enabled := d.WhoisGuard == "ENABLED"
+		nd.PrivacyProtection = &enabled
 	}
 
 	if created, err := time.Parse(dateFormat, d.Created); err == nil {
@@ -206,8 +205,15 @@ func mapDomainToNormalized(d namecheapDomain) domain.NormalizedDomain {
 	if expires, err := time.Parse(dateFormat, d.Expires); err == nil {
 		nd.ExpirationDate = &expires
 	}
-
 	now := time.Now()
+	// Override status if expired, consistent with the other adapters.
+	if nd.ExpirationDate != nil {
+		if nd.ExpirationDate.Before(now) {
+			nd.Status = "expired"
+		} else {
+			nd.Status = "active"
+		}
+	}
 	nd.LastSyncAt = &now
 
 	return nd
@@ -234,12 +240,12 @@ func mapDomainInfoToNormalized(info domainGetInfoResult) domain.NormalizedDomain
 	}
 
 	// Nameservers
-	if len(info.DNSDetails.Nameservers) > 0 {
-		nd.Nameservers = domain.JSON(info.DNSDetails.Nameservers)
+	if info.DNSDetails != nil {
+		nd.Nameservers = append(domain.JSON{}, info.DNSDetails.Nameservers...)
 	}
 
 	// WhoisGuard
-	nd.PrivacyProtection = info.WhoisGuard.Enabled
+	nd.PrivacyProtection = info.WhoisGuard.Enabled != nil && *info.WhoisGuard.Enabled
 
 	now := time.Now()
 	nd.LastSyncAt = &now
@@ -292,8 +298,8 @@ type namecheapDomain struct {
 	Created    string `xml:"Created,attr"`
 	Expires    string `xml:"Expires,attr"`
 	IsExpired  bool   `xml:"IsExpired,attr"`
-	IsLocked   bool   `xml:"IsLocked,attr"`
-	AutoRenew  bool   `xml:"AutoRenew,attr"`
+	IsLocked   *bool  `xml:"IsLocked,attr"`
+	AutoRenew  *bool  `xml:"AutoRenew,attr"`
 	WhoisGuard string `xml:"WhoisGuard,attr"`
 	IsPremium  bool   `xml:"IsPremium,attr"`
 }
@@ -305,7 +311,7 @@ type domainGetInfoResult struct {
 	DomainName    string         `xml:"DomainName,attr"`
 	ID            string         `xml:"ID,attr"`
 	DomainDetails domainDetails  `xml:"DomainDetails"`
-	DNSDetails    dnsDetails     `xml:"DnsDetails"`
+	DNSDetails    *dnsDetails    `xml:"DnsDetails"`
 	WhoisGuard    whoisGuardInfo `xml:"Whoisguard"`
 }
 
@@ -321,5 +327,5 @@ type dnsDetails struct {
 }
 
 type whoisGuardInfo struct {
-	Enabled bool `xml:"Enabled,attr"`
+	Enabled *bool `xml:"Enabled,attr"`
 }

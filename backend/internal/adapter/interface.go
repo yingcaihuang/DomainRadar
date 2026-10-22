@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"domainradar/internal/domain"
 )
@@ -50,13 +51,87 @@ func ParseRegistrarCredential(plaintext string) (*RegistrarCredential, error) {
 	return cred, nil
 }
 
+// DomainDetail is a partial registrar snapshot used by both list and detail APIs.
+// Nil fields are unknown; false flags and empty non-nil lists are authoritative.
+type DomainDetail struct {
+	DomainName          string
+	RegistrarIdentifier string
+	DataSourceType      string
+	LastSyncAt          *time.Time
+	ExpirationDate      *time.Time
+	CreationDate        *time.Time
+	AutoRenew           *bool
+	RenewalDeadline     *time.Time
+	Status              string
+	Nameservers         domain.JSON
+	PrivacyProtection   *bool
+	LockStatus          *bool
+}
+
+// NewDomainDetail copies common fields; adapters must explicitly supply known flags.
+func NewDomainDetail(d domain.NormalizedDomain) *DomainDetail {
+	return &DomainDetail{
+		DomainName: d.DomainName, RegistrarIdentifier: d.RegistrarIdentifier,
+		DataSourceType: d.DataSourceType, LastSyncAt: d.LastSyncAt,
+		ExpirationDate: d.ExpirationDate, CreationDate: d.CreationDate,
+		RenewalDeadline: d.RenewalDeadline, Status: d.Status, Nameservers: d.Nameservers,
+	}
+}
+
+// UpdateFields returns only authoritative fields, preserving unknown local values.
+func (d DomainDetail) UpdateFields() (map[string]interface{}, error) {
+	updates := make(map[string]interface{})
+	if d.ExpirationDate != nil {
+		updates["expiration_date"] = d.ExpirationDate
+	}
+	if d.CreationDate != nil {
+		updates["creation_date"] = d.CreationDate
+	}
+	if d.RenewalDeadline != nil {
+		updates["renewal_deadline"] = d.RenewalDeadline
+	}
+	if d.AutoRenew != nil {
+		updates["auto_renew"] = *d.AutoRenew
+	}
+	if d.PrivacyProtection != nil {
+		updates["privacy_protection"] = *d.PrivacyProtection
+	}
+	if d.LockStatus != nil {
+		updates["lock_status"] = *d.LockStatus
+	}
+	if d.Status != "" {
+		updates["status"] = d.Status
+	}
+	if d.Nameservers != nil {
+		value, err := d.Nameservers.Value()
+		if err != nil {
+			return nil, fmt.Errorf("invalid registrar nameservers: %w", err)
+		}
+		updates["nameservers"] = value
+	}
+	return updates, nil
+}
+
+// ToNormalizedDomain applies defaults only when creating a new local domain.
+func (d DomainDetail) ToNormalizedDomain() domain.NormalizedDomain {
+	return domain.NormalizedDomain{
+		DomainName: d.DomainName, RegistrarIdentifier: d.RegistrarIdentifier,
+		DataSourceType: d.DataSourceType, LastSyncAt: d.LastSyncAt,
+		ExpirationDate: d.ExpirationDate, CreationDate: d.CreationDate,
+		RenewalDeadline: d.RenewalDeadline, Status: d.Status, Nameservers: d.Nameservers,
+		AutoRenew:         d.AutoRenew != nil && *d.AutoRenew,
+		PrivacyProtection: d.PrivacyProtection != nil && *d.PrivacyProtection,
+		LockStatus:        d.LockStatus != nil && *d.LockStatus,
+	}
+}
+
 // RegistrarAdapter defines the contract for all registrar integrations.
 type RegistrarAdapter interface {
 	// ListDomains retrieves all active domains from the registrar account.
-	ListDomains(ctx context.Context, credential *RegistrarCredential) ([]domain.NormalizedDomain, error)
+	ListDomains(ctx context.Context, credential *RegistrarCredential) ([]DomainDetail, error)
 
 	// GetDomainDetail retrieves detailed info for a specific domain.
-	GetDomainDetail(ctx context.Context, credential *RegistrarCredential, domainName string) (*domain.NormalizedDomain, error)
+	GetDomainDetail(ctx context.Context, credential *RegistrarCredential, domainName string) (*DomainDetail, error)
 
 	// TestConnection validates that credentials are working.
 	TestConnection(ctx context.Context, credential *RegistrarCredential) error

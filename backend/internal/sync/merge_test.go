@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"domainradar/internal/adapter"
 	"domainradar/internal/domain"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,10 @@ func uintPtr(v uint) *uint {
 	return &v
 }
 
+func boolPtr(v bool) *bool {
+	return &v
+}
+
 func TestMergeDomains_CreatesNewDomains(t *testing.T) {
 	db := setupTestDB(t)
 	logger := newTestLogger()
@@ -56,18 +61,18 @@ func TestMergeDomains_CreatesNewDomains(t *testing.T) {
 	accountID := uint(1)
 	expiry := time.Now().Add(60 * 24 * time.Hour)
 
-	remoteDomains := []domain.NormalizedDomain{
+	remoteDomains := []adapter.DomainDetail{
 		{
 			DomainName:     "example.com",
 			ExpirationDate: &expiry,
-			AutoRenew:      true,
+			AutoRenew:      boolPtr(true),
 			Status:         "active",
 			Nameservers:    domain.JSON{"ns1.example.com", "ns2.example.com"},
 		},
 		{
 			DomainName:     "test.org",
 			ExpirationDate: &expiry,
-			AutoRenew:      false,
+			AutoRenew:      boolPtr(false),
 			Status:         "active",
 		},
 	}
@@ -104,7 +109,7 @@ func TestMergeDomains_WithoutFullImport(t *testing.T) {
 		{DomainName: "manual.test", Status: "active"},
 	}
 	require.NoError(t, db.Create(&existing).Error)
-	remote := []domain.NormalizedDomain{
+	remote := []adapter.DomainDetail{
 		{DomainName: "owned.test", Status: "locked"},
 		{DomainName: "other.test", Status: "locked"},
 		{DomainName: "manual.test", Status: "locked"},
@@ -151,15 +156,15 @@ func TestMergeDomains_UpdatesExistingDomain_PreservesUserFields(t *testing.T) {
 
 	// Now merge with updated API data.
 	newExpiry := time.Now().Add(365 * 24 * time.Hour)
-	remoteDomains := []domain.NormalizedDomain{
+	remoteDomains := []adapter.DomainDetail{
 		{
 			DomainName:        "existing.com",
 			ExpirationDate:    &newExpiry,
-			AutoRenew:         true,
+			AutoRenew:         boolPtr(true),
 			Status:            "active",
 			Nameservers:       domain.JSON{"ns1.new.com"},
-			PrivacyProtection: true,
-			LockStatus:        true,
+			PrivacyProtection: boolPtr(true),
+			LockStatus:        boolPtr(true),
 		},
 	}
 
@@ -205,7 +210,7 @@ func TestMergeDomains_ResetsAbsenceCountForPresentDomains(t *testing.T) {
 	require.NoError(t, db.Create(&existing).Error)
 
 	// Merge with the domain present.
-	remoteDomains := []domain.NormalizedDomain{
+	remoteDomains := []adapter.DomainDetail{
 		{
 			DomainName:     "comeback.com",
 			ExpirationDate: &expiry,
@@ -384,7 +389,7 @@ func TestMergeDomains_EmptyRemoteList(t *testing.T) {
 	require.NoError(t, db.Create(&existing).Error)
 
 	// Merge with empty remote list.
-	synced, updated, err := MergeDomains(db, accountID, []domain.NormalizedDomain{}, logger)
+	synced, updated, err := MergeDomains(db, accountID, []adapter.DomainDetail{}, logger)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, synced)
 	assert.Equal(t, 0, updated)
@@ -404,7 +409,7 @@ func TestMergeDomains_LogsSyncOperation(t *testing.T) {
 	accountID := uint(1)
 	expiry := time.Now().Add(60 * 24 * time.Hour)
 
-	remoteDomains := []domain.NormalizedDomain{
+	remoteDomains := []adapter.DomainDetail{
 		{DomainName: "log-test-1.com", ExpirationDate: &expiry, Status: "active"},
 		{DomainName: "log-test-2.com", ExpirationDate: &expiry, Status: "active"},
 	}

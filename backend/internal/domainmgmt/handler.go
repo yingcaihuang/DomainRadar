@@ -1576,7 +1576,7 @@ func (h *DomainHandler) RefreshDomain(c *gin.Context) {
 }
 
 // refreshFromRegistrar pulls the domain's current data from its registrar
-// adapter and updates the API-sourced fields (same field set as sync merge).
+// adapter and updates only fields supplied by the detail response.
 func (h *DomainHandler) refreshFromRegistrar(c *gin.Context, d *domain.NormalizedDomain) {
 	if h.adapterRegistry == nil || h.cryptoService == nil {
 		errors.ErrorResponse(c, errors.InternalServer("registrar refresh is not available"))
@@ -1621,25 +1621,20 @@ func (h *DomainHandler) refreshFromRegistrar(c *gin.Context, d *domain.Normalize
 		errors.ErrorResponse(c, errors.InternalServer("registrar refresh failed: "+err.Error()))
 		return
 	}
-
-	var nameserversValue interface{}
-	if detail.Nameservers != nil {
-		nsJSON, _ := detail.Nameservers.Value()
-		nameserversValue = nsJSON
+	if detail == nil || !strings.EqualFold(detail.DomainName, d.DomainName) {
+		h.logger.Error("registrar returned invalid domain detail", zap.Uint("domain_id", d.ID))
+		errors.ErrorResponse(c, errors.InternalServer("registrar returned invalid domain detail"))
+		return
 	}
 	now := time.Now()
-	updates := map[string]interface{}{
-		"expiration_date":    detail.ExpirationDate,
-		"creation_date":      detail.CreationDate,
-		"auto_renew":         detail.AutoRenew,
-		"renewal_deadline":   detail.RenewalDeadline,
-		"status":             detail.Status,
-		"nameservers":        nameserversValue,
-		"privacy_protection": detail.PrivacyProtection,
-		"lock_status":        detail.LockStatus,
-		"last_sync_at":       &now,
-		"absence_count":      0,
+	updates, err := detail.UpdateFields()
+	if err != nil {
+		h.logger.Error("invalid registrar domain detail", zap.Uint("domain_id", d.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("invalid registrar domain detail"))
+		return
 	}
+	updates["last_sync_at"] = &now
+	updates["absence_count"] = 0
 	if err := h.db.Model(d).Updates(updates).Error; err != nil {
 		h.logger.Error("failed to persist registrar refresh", zap.Uint("domain_id", d.ID), zap.Error(err))
 		errors.ErrorResponse(c, errors.InternalServer("failed to save refreshed data"))
@@ -1653,7 +1648,11 @@ func (h *DomainHandler) refreshFromRegistrar(c *gin.Context, d *domain.Normalize
 	})
 
 	var reloaded domain.NormalizedDomain
-	h.db.First(&reloaded, d.ID)
+	if err := h.db.First(&reloaded, d.ID).Error; err != nil {
+		h.logger.Error("failed to reload refreshed domain", zap.Uint("domain_id", d.ID), zap.Error(err))
+		errors.ErrorResponse(c, errors.InternalServer("failed to reload refreshed domain"))
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"data": reloaded, "source": "registrar"})
 }
 

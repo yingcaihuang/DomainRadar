@@ -703,11 +703,11 @@ type testMockAdapterWithError struct {
 	testErr       error
 }
 
-func (m *testMockAdapterWithError) ListDomains(_ context.Context, _ *RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (m *testMockAdapterWithError) ListDomains(_ context.Context, _ *RegistrarCredential) ([]DomainDetail, error) {
 	return nil, nil
 }
 
-func (m *testMockAdapterWithError) GetDomainDetail(_ context.Context, _ *RegistrarCredential, _ string) (*domain.NormalizedDomain, error) {
+func (m *testMockAdapterWithError) GetDomainDetail(_ context.Context, _ *RegistrarCredential, _ string) (*DomainDetail, error) {
 	return nil, nil
 }
 

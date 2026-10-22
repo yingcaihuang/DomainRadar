@@ -22,12 +22,12 @@ type godaddyDomainResponse struct {
 	Domain        string   `json:"domain"`
 	CreatedAt     string   `json:"createdAt"`
 	Expires       string   `json:"expires"`
-	RenewAuto     bool     `json:"renewAuto"`
+	RenewAuto     *bool    `json:"renewAuto"`
 	RenewDeadline string   `json:"renewDeadline"`
 	Status        string   `json:"status"`
 	NameServers   []string `json:"nameServers"`
-	Privacy       bool     `json:"privacy"`
-	Locked        bool     `json:"locked"`
+	Privacy       *bool    `json:"privacy"`
+	Locked        *bool    `json:"locked"`
 }
 
 // Adapter implements RegistrarAdapter for GoDaddy.
@@ -106,7 +106,7 @@ func (a *Adapter) TestConnection(ctx context.Context, credential *adapter.Regist
 }
 
 // ListDomains retrieves all active domains from the GoDaddy account.
-func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/domains?limit=1000", nil)
 	if err != nil {
 		return nil, fmt.Errorf("godaddy: failed to create request: %w", err)
@@ -130,7 +130,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 		return nil, fmt.Errorf("godaddy: failed to decode response: %w", err)
 	}
 
-	domains := make([]domain.NormalizedDomain, 0, len(gdDomains))
+	domains := make([]adapter.DomainDetail, 0, len(gdDomains))
 	for _, gd := range gdDomains {
 		// Skip cancelled/terminated domains — they are no longer under management
 		if gd.Status == "CANCELLED" || gd.Status == "CANCELLED_HELD" ||
@@ -150,7 +150,7 @@ func (a *Adapter) ListDomains(ctx context.Context, credential *adapter.Registrar
 }
 
 // GetDomainDetail retrieves detailed info for a specific domain.
-func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (a *Adapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/domains/"+domainName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("godaddy: failed to create request: %w", err)
@@ -195,17 +195,19 @@ func setAuthHeader(req *http.Request, credential *adapter.RegistrarCredential) {
 	}
 }
 
-// mapToDomain converts a GoDaddy API response to a NormalizedDomain.
-func mapToDomain(gd godaddyDomainResponse) (domain.NormalizedDomain, error) {
-	d := domain.NormalizedDomain{
+// mapToDomain preserves optional fields from a GoDaddy API response.
+func mapToDomain(gd godaddyDomainResponse) (adapter.DomainDetail, error) {
+	d := adapter.DomainDetail{
 		DomainName:          gd.Domain,
 		RegistrarIdentifier: "godaddy",
 		AutoRenew:           gd.RenewAuto,
-		Status:              mapStatus(gd.Status),
 		Nameservers:         domain.JSON(gd.NameServers),
 		PrivacyProtection:   gd.Privacy,
 		LockStatus:          gd.Locked,
 		DataSourceType:      "api",
+	}
+	if gd.Status != "" {
+		d.Status = mapStatus(gd.Status)
 	}
 
 	now := time.Now()

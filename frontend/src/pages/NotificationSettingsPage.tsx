@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, message, App, Drawer } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Tag, Space, Card, App, Drawer } from 'antd';
 import { PlusOutlined, ExperimentOutlined, DeleteOutlined, HistoryOutlined, EditOutlined } from '@ant-design/icons';
 import { notificationApi } from '../services';
 import type { NotificationLogEntry } from '../services';
 import type { NotificationChannel } from '../types';
 
 export function NotificationSettingsPage() {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingChannel, setEditingChannel] = useState<NotificationChannel | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
+  const editRequestId = useRef(0);
   const [form] = Form.useForm();
   const [logsDrawer, setLogsDrawer] = useState<{ visible: boolean; channelId: number; channelName: string }>({ visible: false, channelId: 0, channelName: '' });
   const [logsPage, setLogsPage] = useState(1);
+
+  useEffect(() => () => { editRequestId.current += 1; }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ['notification-channels'],
@@ -27,22 +31,37 @@ export function NotificationSettingsPage() {
   });
 
   const closeModal = () => {
+    editRequestId.current += 1;
+    setConfigLoading(false);
     setModalVisible(false);
     setEditingChannel(null);
     form.resetFields();
   };
-  const openAdd = () => { setEditingChannel(null); form.resetFields(); setModalVisible(true); };
+  const openAdd = () => {
+    editRequestId.current += 1;
+    setConfigLoading(false);
+    setEditingChannel(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
   const openEdit = async (record: NotificationChannel) => {
+    const requestId = ++editRequestId.current;
+    setConfigLoading(true);
     setEditingChannel(record);
+    form.resetFields();
     form.setFieldsValue({ channel_type: record.channel_type, name: record.name });
     setModalVisible(true);
     // 拉取解密后的真实配置回填表单，用户可见并按需修改
     try {
       const res = await notificationApi.channels.get(record.id);
+      if (requestId !== editRequestId.current) return;
       form.setFieldsValue(res.data.config);
-    } catch (e: any) {
-      message.error(`获取渠道配置失败: ${e.message}`);
+    } catch (e: unknown) {
+      if (requestId !== editRequestId.current) return;
+      message.error(`获取渠道配置失败: ${e instanceof Error ? e.message : String(e)}`);
       closeModal();
+    } finally {
+      if (requestId === editRequestId.current) setConfigLoading(false);
     }
   };
 
@@ -184,8 +203,12 @@ export function NotificationSettingsPage() {
         <Table rowKey="id" columns={columns} dataSource={data?.data || []} loading={isLoading} pagination={false} />
       </Card>
 
-      <Modal title={editingChannel ? '编辑通知渠道' : '添加通知渠道'} open={modalVisible} onCancel={closeModal} onOk={() => form.submit()} confirmLoading={createMutation.isPending || updateMutation.isPending} okText={editingChannel ? '保存' : '创建'} cancelText="取消">
-        <Form form={form} layout="vertical" initialValues={{ channel_type: 'webhook' }} onFinish={(values) => {
+      <Modal title={editingChannel ? '编辑通知渠道' : '添加通知渠道'} open={modalVisible} onCancel={closeModal} onOk={() => form.submit()} confirmLoading={createMutation.isPending || updateMutation.isPending} okButtonProps={{ disabled: configLoading }} okText={editingChannel ? '保存' : '创建'} cancelText="取消">
+        <Form form={form} layout="vertical" disabled={configLoading} aria-busy={configLoading} initialValues={{ channel_type: 'webhook' }} onFinish={(values) => {
+          if (configLoading) {
+            message.warning('渠道配置加载中，请稍后再保存');
+            return;
+          }
           // 编辑回填了真实配置，与新建一样构建完整 config 提交（api_url/alarm_code 空值走后端默认）
           const config: Record<string, string> = {};
           if (values.channel_type === 'webhook') {

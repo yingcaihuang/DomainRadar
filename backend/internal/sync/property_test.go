@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"domainradar/internal/adapter"
 	"domainradar/internal/domain"
 
 	"github.com/stretchr/testify/require"
@@ -151,14 +152,14 @@ func TestProperty3_DomainDataMergePreservesUserFields(t *testing.T) {
 		daysAhead := rapid.IntRange(1, 365).Draw(rt, "daysAhead")
 		newExpiry := time.Now().Add(time.Duration(daysAhead) * 24 * time.Hour)
 
-		remoteDomains := []domain.NormalizedDomain{
+		remoteDomains := []adapter.DomainDetail{
 			{
 				DomainName:        "property-test.com",
 				ExpirationDate:    &newExpiry,
-				AutoRenew:         newAutoRenew,
+				AutoRenew:         &newAutoRenew,
 				Status:            "active",
-				PrivacyProtection: newPrivacy,
-				LockStatus:        newLock,
+				PrivacyProtection: &newPrivacy,
+				LockStatus:        &newLock,
 			},
 		}
 

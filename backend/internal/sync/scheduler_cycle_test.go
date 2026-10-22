@@ -15,7 +15,7 @@ import (
 )
 
 type cycleAdapter struct {
-	domains     []domain.NormalizedDomain
+	domains     []adapter.DomainDetail
 	credentials chan adapter.RegistrarCredential
 }
 
@@ -23,10 +23,10 @@ func (a *cycleAdapter) RegistrarType() string { return "cloudflare" }
 func (a *cycleAdapter) TestConnection(context.Context, *adapter.RegistrarCredential) error {
 	return nil
 }
-func (a *cycleAdapter) GetDomainDetail(context.Context, *adapter.RegistrarCredential, string) (*domain.NormalizedDomain, error) {
+func (a *cycleAdapter) GetDomainDetail(context.Context, *adapter.RegistrarCredential, string) (*adapter.DomainDetail, error) {
 	return nil, nil
 }
-func (a *cycleAdapter) ListDomains(_ context.Context, cred *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *cycleAdapter) ListDomains(_ context.Context, cred *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	a.credentials <- *cred
 	return a.domains, nil
 }
@@ -56,7 +56,7 @@ func TestRunSyncCycle_ImportOptionsAndCredentials(t *testing.T) {
 				DomainName: "owned.test", RegistrarAccountID: &account.ID, Status: "active",
 			}).Error)
 			stub := &cycleAdapter{
-				domains: []domain.NormalizedDomain{
+				domains: []adapter.DomainDetail{
 					{DomainName: "owned.test", Status: "locked"},
 					{DomainName: "new.test", Status: "active"},
 				},
@@ -225,10 +225,10 @@ func (a *failingAdapter) RegistrarType() string { return a.registrarType }
 func (a *failingAdapter) TestConnection(context.Context, *adapter.RegistrarCredential) error {
 	return nil
 }
-func (a *failingAdapter) GetDomainDetail(context.Context, *adapter.RegistrarCredential, string) (*domain.NormalizedDomain, error) {
+func (a *failingAdapter) GetDomainDetail(context.Context, *adapter.RegistrarCredential, string) (*adapter.DomainDetail, error) {
 	return nil, nil
 }
-func (a *failingAdapter) ListDomains(context.Context, *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *failingAdapter) ListDomains(context.Context, *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	return nil, a.listErr
 }
 
@@ -254,7 +254,7 @@ func TestRunSyncCycle_RecalculatesIntervalBothWays(t *testing.T) {
 	// Account's most imminent domain is 15 days out → 12h interval.
 	near := time.Now().Add(15 * 24 * time.Hour)
 	far := time.Now().Add(300 * 24 * time.Hour)
-	stub.domains = []domain.NormalizedDomain{
+	stub.domains = []adapter.DomainDetail{
 		{DomainName: "near.test", ExpirationDate: &near, Status: "active"},
 		{DomainName: "far.test", ExpirationDate: &far, Status: "active"},
 	}
@@ -265,7 +265,7 @@ func TestRunSyncCycle_RecalculatesIntervalBothWays(t *testing.T) {
 
 	// The imminent domain renews far out → interval must slow back down.
 	renewed := time.Now().Add(400 * 24 * time.Hour)
-	stub.domains = []domain.NormalizedDomain{
+	stub.domains = []adapter.DomainDetail{
 		{DomainName: "near.test", ExpirationDate: &renewed, Status: "active"},
 		{DomainName: "far.test", ExpirationDate: &far, Status: "active"},
 	}

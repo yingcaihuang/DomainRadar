@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"domainradar/internal/adapter"
 	"domainradar/internal/domain"
 
 	"go.uber.org/zap"
@@ -24,11 +25,11 @@ type MergeResult struct {
 // given registrar account. It updates API-sourced fields while preserving user-defined
 // fields (group_id, notes, tags). New domains are created with data_source_type="api".
 // Returns the number of domains synced, updated, and any error encountered.
-func MergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.NormalizedDomain, logger *zap.Logger) (synced int, updated int, err error) {
+func MergeDomains(db *gorm.DB, accountID uint, remoteDomains []adapter.DomainDetail, logger *zap.Logger) (synced int, updated int, err error) {
 	return mergeDomains(db, accountID, remoteDomains, logger, true)
 }
 
-func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.NormalizedDomain, logger *zap.Logger, fullImport bool) (synced int, updated int, err error) {
+func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []adapter.DomainDetail, logger *zap.Logger, fullImport bool) (synced int, updated int, err error) {
 	startTime := time.Now()
 	var errors []string
 
@@ -46,7 +47,7 @@ func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 			}
 			synced++
 			// Create new record with API data.
-			newDomain := remote
+			newDomain := remote.ToNormalizedDomain()
 			newDomain.DataSourceType = "api"
 			newDomain.RegistrarAccountID = &accountID
 			newDomain.AbsenceCount = 0
@@ -82,25 +83,16 @@ func mergeDomains(db *gorm.DB, accountID uint, remoteDomains []domain.Normalized
 			// user-defined fields (group_id, notes, tags).
 			now := time.Now()
 
-			// Serialize nameservers to JSON string for the update map.
-			var nameserversValue interface{}
-			if remote.Nameservers != nil {
-				nsJSON, _ := remote.Nameservers.Value()
-				nameserversValue = nsJSON
+			updateFields, fieldErr := remote.UpdateFields()
+			if fieldErr != nil {
+				errors = append(errors, fmt.Sprintf("invalid domain %s: %v", remote.DomainName, fieldErr))
+				if logger != nil {
+					logger.Error("Invalid registrar domain during merge", zap.String("domain_name", remote.DomainName), zap.Error(fieldErr))
+				}
+				continue
 			}
-
-			updateFields := map[string]interface{}{
-				"expiration_date":    remote.ExpirationDate,
-				"creation_date":      remote.CreationDate,
-				"auto_renew":         remote.AutoRenew,
-				"renewal_deadline":   remote.RenewalDeadline,
-				"status":             remote.Status,
-				"nameservers":        nameserversValue,
-				"privacy_protection": remote.PrivacyProtection,
-				"lock_status":        remote.LockStatus,
-				"last_sync_at":       &now,
-				"absence_count":      0, // Reset absence count since domain is present.
-			}
+			updateFields["last_sync_at"] = &now
+			updateFields["absence_count"] = 0
 
 			if updateErr := db.Model(&existing).Updates(updateFields).Error; updateErr != nil {
 				errors = append(errors, fmt.Sprintf("failed to update domain %s: %v", remote.DomainName, updateErr))

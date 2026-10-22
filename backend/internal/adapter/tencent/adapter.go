@@ -48,13 +48,13 @@ func (a *TencentAdapter) TestConnection(ctx context.Context, credential *adapter
 }
 
 // ListDomains retrieves all domains from the Tencent Cloud account.
-func (a *TencentAdapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]domain.NormalizedDomain, error) {
+func (a *TencentAdapter) ListDomains(ctx context.Context, credential *adapter.RegistrarCredential) ([]adapter.DomainDetail, error) {
 	client, err := a.newClient(credential)
 	if err != nil {
 		return nil, fmt.Errorf("tencent: failed to create client: %w", err)
 	}
 
-	var allDomains []domain.NormalizedDomain
+	var allDomains []adapter.DomainDetail
 	var offset uint64 = 0
 	var limit uint64 = 100
 
@@ -92,7 +92,7 @@ func (a *TencentAdapter) ListDomains(ctx context.Context, credential *adapter.Re
 }
 
 // GetDomainDetail retrieves detailed info for a specific domain.
-func (a *TencentAdapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*domain.NormalizedDomain, error) {
+func (a *TencentAdapter) GetDomainDetail(ctx context.Context, credential *adapter.RegistrarCredential, domainName string) (*adapter.DomainDetail, error) {
 	client, err := a.newClient(credential)
 	if err != nil {
 		return nil, fmt.Errorf("tencent: failed to create client: %w", err)
@@ -111,7 +111,7 @@ func (a *TencentAdapter) GetDomainDetail(ctx context.Context, credential *adapte
 	}
 
 	nd := mapDomainBaseInfo(response.Response.DomainInfo)
-	return &nd, nil
+	return adapter.NewDomainDetail(nd), nil
 }
 
 // newClient creates a Tencent Cloud domain API client from credentials.
@@ -135,10 +135,10 @@ func (a *TencentAdapter) newClient(credential *adapter.RegistrarCredential) (*do
 	return client, nil
 }
 
-// mapDomainItem converts a Tencent SDK DomainList item to NormalizedDomain.
-func mapDomainItem(d *domainSvc.DomainList) domain.NormalizedDomain {
+// mapDomainItem preserves optional fields from a Tencent SDK list item.
+func mapDomainItem(d *domainSvc.DomainList) adapter.DomainDetail {
 	now := time.Now()
-	nd := domain.NormalizedDomain{
+	nd := adapter.DomainDetail{
 		RegistrarIdentifier: "tencent",
 		DataSourceType:      "api",
 		LastSyncAt:          &now,
@@ -148,7 +148,8 @@ func mapDomainItem(d *domainSvc.DomainList) domain.NormalizedDomain {
 		nd.DomainName = *d.DomainName
 	}
 	if d.AutoRenew != nil {
-		nd.AutoRenew = *d.AutoRenew == 1
+		autoRenew := *d.AutoRenew == 1
+		nd.AutoRenew = &autoRenew
 	}
 	if d.CreationDate != nil && *d.CreationDate != "" {
 		if t, err := time.Parse("2006-01-02", *d.CreationDate); err == nil {
@@ -162,7 +163,7 @@ func mapDomainItem(d *domainSvc.DomainList) domain.NormalizedDomain {
 	}
 	if d.BuyStatus != nil {
 		nd.Status = mapBuyStatus(*d.BuyStatus)
-	} else {
+	} else if nd.ExpirationDate != nil {
 		nd.Status = "active"
 	}
 

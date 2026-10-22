@@ -104,23 +104,23 @@ func TestListDomains_Success(t *testing.T) {
 		{
 			Domain:        "example.com",
 			CreatedAt:     "2020-01-15T10:00:00Z",
-			Expires:       "2025-01-15T10:00:00Z",
-			RenewAuto:     true,
-			RenewDeadline: "2025-01-10T10:00:00Z",
+			Expires:       "2035-01-15T10:00:00Z",
+			RenewAuto:     boolPtr(true),
+			RenewDeadline: "2035-01-10T10:00:00Z",
 			Status:        "ACTIVE",
 			NameServers:   []string{"ns1.godaddy.com", "ns2.godaddy.com"},
-			Privacy:       true,
-			Locked:        true,
+			Privacy:       boolPtr(true),
+			Locked:        boolPtr(true),
 		},
 		{
 			Domain:      "test.org",
 			CreatedAt:   "2021-06-01T00:00:00Z",
 			Expires:     "2024-06-01T00:00:00Z",
-			RenewAuto:   false,
+			RenewAuto:   boolPtr(false),
 			Status:      "EXPIRED",
 			NameServers: []string{"ns1.test.org"},
-			Privacy:     false,
-			Locked:      false,
+			Privacy:     boolPtr(false),
+			Locked:      boolPtr(false),
 		},
 	}
 
@@ -143,11 +143,11 @@ func TestListDomains_Success(t *testing.T) {
 	// Check first domain mapping
 	assert.Equal(t, "example.com", result[0].DomainName)
 	assert.Equal(t, "godaddy", result[0].RegistrarIdentifier)
-	assert.Equal(t, true, result[0].AutoRenew)
+	assert.Equal(t, boolPtr(true), result[0].AutoRenew)
 	assert.Equal(t, "active", result[0].Status)
 	assert.Equal(t, []string{"ns1.godaddy.com", "ns2.godaddy.com"}, []string(result[0].Nameservers))
-	assert.Equal(t, true, result[0].PrivacyProtection)
-	assert.Equal(t, true, result[0].LockStatus)
+	assert.Equal(t, boolPtr(true), result[0].PrivacyProtection)
+	assert.Equal(t, boolPtr(true), result[0].LockStatus)
 	assert.Equal(t, "api", result[0].DataSourceType)
 	assert.NotNil(t, result[0].CreationDate)
 	assert.NotNil(t, result[0].ExpirationDate)
@@ -156,10 +156,10 @@ func TestListDomains_Success(t *testing.T) {
 
 	// Check second domain
 	assert.Equal(t, "test.org", result[1].DomainName)
-	assert.Equal(t, false, result[1].AutoRenew)
+	assert.Equal(t, boolPtr(false), result[1].AutoRenew)
 	assert.Equal(t, "expired", result[1].Status)
-	assert.Equal(t, false, result[1].PrivacyProtection)
-	assert.Equal(t, false, result[1].LockStatus)
+	assert.Equal(t, boolPtr(false), result[1].PrivacyProtection)
+	assert.Equal(t, boolPtr(false), result[1].LockStatus)
 }
 
 func TestListDomains_EmptyList(t *testing.T) {
@@ -197,17 +197,19 @@ func TestListDomains_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "API error (HTTP 403)")
 }
 
+func boolPtr(value bool) *bool { return &value }
+
 func TestGetDomainDetail_Success(t *testing.T) {
 	domainResp := godaddyDomainResponse{
 		Domain:        "example.com",
 		CreatedAt:     "2020-01-15T10:00:00Z",
-		Expires:       "2025-01-15T10:00:00Z",
-		RenewAuto:     true,
-		RenewDeadline: "2025-01-10T10:00:00Z",
+		Expires:       "2035-01-15T10:00:00Z",
+		RenewAuto:     boolPtr(true),
+		RenewDeadline: "2035-01-10T10:00:00Z",
 		Status:        "ACTIVE",
 		NameServers:   []string{"ns1.godaddy.com", "ns2.godaddy.com"},
-		Privacy:       true,
-		Locked:        true,
+		Privacy:       boolPtr(true),
+		Locked:        boolPtr(true),
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -227,15 +229,15 @@ func TestGetDomainDetail_Success(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, "example.com", result.DomainName)
 	assert.Equal(t, "godaddy", result.RegistrarIdentifier)
-	assert.Equal(t, true, result.AutoRenew)
+	assert.Equal(t, boolPtr(true), result.AutoRenew)
 	assert.Equal(t, "active", result.Status)
-	assert.Equal(t, true, result.PrivacyProtection)
-	assert.Equal(t, true, result.LockStatus)
+	assert.Equal(t, boolPtr(true), result.PrivacyProtection)
+	assert.Equal(t, boolPtr(true), result.LockStatus)
 
 	expectedCreated, _ := time.Parse(time.RFC3339, "2020-01-15T10:00:00Z")
 	assert.Equal(t, expectedCreated, *result.CreationDate)
 
-	expectedExpires, _ := time.Parse(time.RFC3339, "2025-01-15T10:00:00Z")
+	expectedExpires, _ := time.Parse(time.RFC3339, "2035-01-15T10:00:00Z")
 	assert.Equal(t, expectedExpires, *result.ExpirationDate)
 }
 

@@ -84,9 +84,9 @@ func TestListDomains_Success(t *testing.T) {
 	// First domain
 	assert.Equal(t, "example.com", domains[0].DomainName)
 	assert.Equal(t, "namecheap", domains[0].RegistrarIdentifier)
-	assert.True(t, domains[0].AutoRenew)
-	assert.True(t, domains[0].LockStatus)
-	assert.True(t, domains[0].PrivacyProtection)
+	assert.Equal(t, boolPtr(true), domains[0].AutoRenew)
+	assert.Equal(t, boolPtr(true), domains[0].LockStatus)
+	assert.Equal(t, boolPtr(true), domains[0].PrivacyProtection)
 	assert.Equal(t, "api", domains[0].DataSourceType)
 	require.NotNil(t, domains[0].CreationDate)
 	assert.Equal(t, 2020, domains[0].CreationDate.Year())
@@ -99,9 +99,9 @@ func TestListDomains_Success(t *testing.T) {
 
 	// Second domain
 	assert.Equal(t, "test.org", domains[1].DomainName)
-	assert.False(t, domains[1].AutoRenew)
-	assert.False(t, domains[1].LockStatus)
-	assert.False(t, domains[1].PrivacyProtection)
+	assert.Equal(t, boolPtr(false), domains[1].AutoRenew)
+	assert.Equal(t, boolPtr(false), domains[1].LockStatus)
+	assert.Equal(t, boolPtr(false), domains[1].PrivacyProtection)
 }
 
 func TestListDomains_APIError(t *testing.T) {
@@ -160,7 +160,8 @@ func TestGetDomainDetail_Success(t *testing.T) {
 	assert.Equal(t, "namecheap", d.RegistrarIdentifier)
 	assert.Equal(t, "api", d.DataSourceType)
 	assert.Equal(t, "Ok", d.Status)
-	assert.True(t, d.PrivacyProtection)
+	require.NotNil(t, d.PrivacyProtection)
+	assert.True(t, *d.PrivacyProtection)
 	require.NotNil(t, d.CreationDate)
 	assert.Equal(t, 2020, d.CreationDate.Year())
 	require.NotNil(t, d.ExpirationDate)
